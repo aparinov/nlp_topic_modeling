@@ -10,6 +10,7 @@ from celery_tasks import run_stage
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1@localhost:5432/topicmodeling'
 
 db = SQLAlchemy(app)
@@ -168,168 +169,212 @@ def verify_password(username_or_token, password):
 
 #-------------------------------------------------#
 
-PROGRAM = Blueprint("program", __name__)
-
-# TODO: класс Program
-# TODO: класс Stage
-# TODO: Перечитать ТЗ и заметки
-
-# TODO: пример
-#  Stage = {
-#   "input":"data:int[]"
-#   "output":"int"
-#   "description":"Sum"
+# PROGRAM = Blueprint("program", __name__)
+#
+# # TODO: класс Program
+# # TODO: класс Stage
+#
+# # TODO: пример
+# stage = {
+#   "input":"data:int[]",
+#   "output":"int",
+#   "description":"Sum",
 #   "dependencies": [{
-#       lib:"tensorflow"
-#       version:"2.0.1"
-#   }]
-#   "author":1
-#   "time_created":12345
+#       "lib":"tensorflow",
+#       "version":"2.0.1"
+#   }],
+#   "author":1,
+#   "time_created":12345,
 #   "id":1
 #  }
+#
+# # TODO: Рабочий пример с RoBERTa
+#
+# @PROGRAM.route('/get', methods=["GET"])
+# @auth.login_required()
+# def get_program():
+#     # TODO: implement
+#     return {}
+#
+#
+# @PROGRAM.route('/update', methods=["PATCH"])
+# @auth.login_required()
+# def upd_program():
+#     # TODO: implement
+#     return {}
+#
+#
+# @PROGRAM.route('/post', methods=["POST"])
+# @auth.login_required()
+# def post_program():
+#     # TODO: implement
+#     return {}
+#
+#
+# @PROGRAM.route('/delete', methods=["DELETE"])
+# @auth.login_required()
+# def del_program():
+#     # TODO: implement
+#     return {}
 
-# TODO: Использование Celery для запуска стадий
-# TODO: Совместимость интерфейсов стадий эксперимента
-# TODO: Рабочий пример с RoBERTa
+#-------------------------------------------------#
 
+SCHEMA = Blueprint("schema" , __name__)
+from database import session as s
+from database import create_dataformat, DataFormat
 
-@PROGRAM.route('/get', methods=["GET"])
+@SCHEMA.route('/get', methods=["GET"])
 @auth.login_required()
-def get_program():
+def get_schema():
     # TODO: implement
     return {}
 
 
-@PROGRAM.route('/update', methods=["PATCH"])
+@SCHEMA.route('/update', methods=["PATCH"])
 @auth.login_required()
-def upd_program():
+def upd_schema():
     # TODO: implement
     return {}
 
 
-@PROGRAM.route('/post', methods=["POST"])
-@auth.login_required()
-def post_program():
-    # TODO: implement
-    return {}
+@SCHEMA.route('/post', methods=["POST"])
+# @auth.login_required()
+def post_schema():
+    name = request.json.get('name')
+    format = request.json.get('file_format')
+    schema = request.json.get('schema')
+
+    try:
+        create_dataformat(name, format, schema,s)
+    except Exception as e:
+        abort(400, e.args[0])
+
+    id = s.query(DataFormat).filter(DataFormat.name == name).first().Id
+    return jsonify({ 'id': id,
+                     "name" : name,
+                     "format" : format,
+                     "schema" : schema
+                     })
 
 
-@PROGRAM.route('/delete', methods=["DELETE"])
+@SCHEMA.route('/delete', methods=["DELETE"])
 @auth.login_required()
-def del_program():
+def del_schema():
     # TODO: implement
     return {}
 
 #-------------------------------------------------#
 
-EXPERIMENT = Blueprint("experiment", __name__)
-
-# TODO: класс Experiment
-
-
-
-@app.route("/run_stage")
-def stage_running():
-
-    data = {
-    "lang" : "py",
-    "code" : """import numpy as np
-# print(type(np.array([1,2,3])))
-# print('works!')
-# print(val)
-val = 0
-""",
-    "dependencies" : ["numpy"],
-    "input" : {"val":int},
-    "output" : {"val":int}
-}
-
-    local = {"val" : 123}
-
-    res = run_stage.delay(local=local, data=data).get()
-
-    # res = run_stage.delay(data, local)
-    # print()
-    # print(res.status)
-    # res = res.get()
-    # print(res)
-    # print(type(res))
-    return res
-
-# TODO: Использование Celery для запуска стадий
-# TODO: Рабочий пример с 20 news groups
-
-
-@EXPERIMENT.route('/get', methods=["GET"])
-@auth.login_required()
-def get_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/update', methods=["PATCH"])
-@auth.login_required()
-def upd_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/post', methods=["POST"])
-@auth.login_required()
-def post_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/delete', methods=["DELETE"])
-@auth.login_required()
-def del_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/conduct', methods=["POST"])
-@auth.login_required()
-def conduct_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/pause', methods=["POST"])
-@auth.login_required()
-def pause_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/continue', methods=["POST"])
-@auth.login_required()
-def continue_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route('/cancel', methods=["POST"])
-@auth.login_required()
-def cancel_experiment():
-    # TODO: implement
-    return {}
-
-
-@EXPERIMENT.route("/status")
-def status():
-    # TODO: implement
-    return {"status": "TODO"}
+# EXPERIMENT = Blueprint("experiment", __name__)
+#
+# # TODO: класс Experiment
+#
+# @app.route("/run_stage")
+# def stage_running():
+#
+#     data = {
+#     "lang" : "py",
+#     "code" : """import numpy as np
+# # print(type(np.array([1,2,3])))
+# # print('works!')
+# # print(val)
+# val = 0
+# """,
+#     "dependencies" : ["numpy"],
+#     "input" : {"val":int},
+#     "output" : {"val":int}
+# }
+#
+#     local = {"val" : 123}
+#
+#     res = run_stage.delay(local=local, data=data).get()
+#
+#     # res = run_stage.delay(data, local)
+#     # print()
+#     # print(res.status)
+#     # res = res.get()
+#     # print(res)
+#     # print(type(res))
+#     return res
+#
+# # TODO: Рабочий пример с 20 news groups
+#
+#
+# @EXPERIMENT.route('/get', methods=["GET"])
+# @auth.login_required()
+# def get_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/update', methods=["PATCH"])
+# @auth.login_required()
+# def upd_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/post', methods=["POST"])
+# @auth.login_required()
+# def post_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/delete', methods=["DELETE"])
+# @auth.login_required()
+# def del_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/conduct', methods=["POST"])
+# @auth.login_required()
+# def conduct_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/pause', methods=["POST"])
+# @auth.login_required()
+# def pause_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/continue', methods=["POST"])
+# @auth.login_required()
+# def continue_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route('/cancel', methods=["POST"])
+# @auth.login_required()
+# def cancel_experiment():
+#     # TODO: implement
+#     return {}
+#
+#
+# @EXPERIMENT.route("/status")
+# def status():
+#     # TODO: implement
+#     return {"status": "TODO"}
 
 
 #-------------------------------------------------#
 
-app.register_blueprint(EXPERIMENT, url_prefix='/experiment')
-app.register_blueprint(PROGRAM, url_prefix='/program')
-app.register_blueprint(USER, url_prefix='/user')
+# app.register_blueprint(EXPERIMENT, url_prefix='/experiment')
+# app.register_blueprint(PROGRAM, url_prefix='/program')
+
+from views.user import user_bp
+# app.register_blueprint(USER, url_prefix='/user')
+app.register_blueprint(user_bp, url_prefix='/user')
+app.register_blueprint(SCHEMA, url_prefix='/schema')
 
 # db.drop_all()
 # db.create_all()
+
 if User.query.filter_by(username = "admin").first() is None:
     print("admin" * 100)
     user = User(username = "admin", admin_rights=True, exp_admin_rights=True)

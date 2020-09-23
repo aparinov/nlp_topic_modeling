@@ -1,11 +1,13 @@
 import subprocess
 import sys
-from celery import Celery
+from celery import Celery, chain, current_task
 import traceback
 
-celery = Celery('tasks', broker='amqp://0.0.0.0:5672', accept_content=['pickle'], backend='db+sqlite:///db.sqlite3')
-celery.config_from_object("celeryconfig")
+# celery = Celery('tasks', broker='amqp://0.0.0.0:5672', accept_content=['pickle'], backend='db+sqlite:///db.sqlite3')
+# celery.config_from_object("celeryconfig")
 
+from factory import create_celery_app
+celery = create_celery_app()
 
 @celery.task(serializer="pickle")
 def run_stage(local: dict, data: dict) -> dict:

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/TopicModeling.iml" filepath="$PROJECT_DIR$/.idea/TopicModeling.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../testing_framework/.idea/testing_framework.iml" filepath="$PROJECT_DIR$/../testing_framework/.idea/testing_framework.iml" />
     </modules>
   </component>
 </project>
