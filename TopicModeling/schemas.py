@@ -1,6 +1,7 @@
 import fastjsonschema
 from lxml import etree
 from jsonschema import validate
+import ast
 
 # https://json-schema.org/learn/miscellaneous-examples.html
 # https://www.liquid-technologies.com/online-xsd-validator
@@ -250,7 +251,6 @@ def validate_xml(xsd, xml):
         return e.args
     return True
 
-import ast
 
 def validate_json(schema, instance):
     try:

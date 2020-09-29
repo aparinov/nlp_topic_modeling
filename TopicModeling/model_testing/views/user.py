@@ -4,26 +4,58 @@ from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPBasicAuth
 import os
+from model_testing import from_dict
+from model_testing import db, auth
+# from model_testing.database import User
+from model_testing.model.user import User
 
 from passlib.apps import custom_app_context
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 
 user_bp = Blueprint("user", __name__)
 
-@user_bp.route('/read', methods=["GET"])
-def read_user():
+@user_bp.route('/get_all', methods=["GET"])
+def get_all_user():
     users = []
     for u in User.query.all():
-       users.append({
-           "username": u.username,
-           "admin_rights": u.admin_rights,
-           "exp_admin_rights": u.exp_admin_rights
-       })
-    return {"users":users}
+        users.append(u.to_dict())
 
-@user_bp.route('/create', methods=["POST"])
+    return {"response":users}
+
+
+@user_bp.route('/get', methods=["GET"])
+def get_user():
+    to_get = request.json.get('to_get')
+    res = {"response": []}
+    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'id' or 'username'."}
+    if to_get:
+        for g in to_get:
+            username = from_dict(g, 'username')
+            id = from_dict(g, 'id')
+
+            if (id is not None) or (username is not None):
+                try:
+                    us = User.get(id, username)
+                    res["response"].append(us.to_dict())
+                except Exception as e:
+                    err = {"error": str(e)}
+                    if id:
+                        err['id'] = id
+                    if username:
+                        err['username'] = username
+                    res["response"].append(err)
+            else:
+                res['response'].append(incomplete_description)
+    else:
+        res['response'].append(incomplete_description)
+
+    return jsonify(res)
+
+
+@user_bp.route('/post', methods=["POST"])
 @auth.login_required
 def create_user():
+
     if not g.user.admin_rights:
         abort(101, "Permission required! Only administrator can create users.")
 
@@ -99,16 +131,3 @@ def delete_user():
 def get_auth_token():
     token = g.user.generate_auth_token()
     return jsonify({ 'token': token.decode('ascii') })
-
-
-@auth.verify_password
-def verify_password(username_or_token, password):
-    # first try to authenticate by token
-    user = User.verify_auth_token(username_or_token)
-    if not user:
-        # try to authenticate with username/password
-        user = User.query.filter_by(username = username_or_token).first()
-        if not user or not user.verify_password(password):
-            return False
-    g.user = user
-    return True

@@ -20,6 +20,7 @@ auth = HTTPBasicAuth()
 #-------------------------------------------------#
 USER = Blueprint("user", __name__)
 
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key = True, autoincrement=True)
@@ -219,49 +220,49 @@ def verify_password(username_or_token, password):
 
 #-------------------------------------------------#
 
-SCHEMA = Blueprint("schema" , __name__)
-from database import session as s
-from database import create_dataformat, DataFormat
-
-@SCHEMA.route('/get', methods=["GET"])
-@auth.login_required()
-def get_schema():
-    # TODO: implement
-    return {}
-
-
-@SCHEMA.route('/update', methods=["PATCH"])
-@auth.login_required()
-def upd_schema():
-    # TODO: implement
-    return {}
-
-
-@SCHEMA.route('/post', methods=["POST"])
+# SCHEMA = Blueprint("schema" , __name__)
+# from database import session as s
+# from database import create_dataformat, DataFormat
+#
+# @SCHEMA.route('/get', methods=["GET"])
 # @auth.login_required()
-def post_schema():
-    name = request.json.get('name')
-    format = request.json.get('file_format')
-    schema = request.json.get('schema')
-
-    try:
-        create_dataformat(name, format, schema,s)
-    except Exception as e:
-        abort(400, e.args[0])
-
-    id = s.query(DataFormat).filter(DataFormat.name == name).first().Id
-    return jsonify({ 'id': id,
-                     "name" : name,
-                     "format" : format,
-                     "schema" : schema
-                     })
-
-
-@SCHEMA.route('/delete', methods=["DELETE"])
-@auth.login_required()
-def del_schema():
-    # TODO: implement
-    return {}
+# def get_schema():
+#     # TODO: implement
+#     return {}
+#
+#
+# @SCHEMA.route('/update', methods=["PATCH"])
+# @auth.login_required()
+# def upd_schema():
+#     # TODO: implement
+#     return {}
+#
+#
+# @SCHEMA.route('/post', methods=["POST"])
+# # @auth.login_required()
+# def post_schema():
+#     name = request.json.get('name')
+#     format = request.json.get('file_format')
+#     schema = request.json.get('schema')
+#
+#     try:
+#         create_dataformat(name, format, schema,s)
+#     except Exception as e:
+#         abort(400, e.args[0])
+#
+#     id = s.query(DataFormat).filter(DataFormat.name == name).first().Id
+#     return jsonify({ 'id': id,
+#                      "name" : name,
+#                      "format" : format,
+#                      "schema" : schema
+#                      })
+#
+#
+# @SCHEMA.route('/delete', methods=["DELETE"])
+# @auth.login_required()
+# def del_schema():
+#     # TODO: implement
+#     return {}
 
 #-------------------------------------------------#
 
@@ -367,9 +368,9 @@ def del_schema():
 # app.register_blueprint(EXPERIMENT, url_prefix='/experiment')
 # app.register_blueprint(PROGRAM, url_prefix='/program')
 
-from views.user import user_bp
+# from views.user import user_bp
 # app.register_blueprint(USER, url_prefix='/user')
-app.register_blueprint(user_bp, url_prefix='/user')
+# app.register_blueprint(user_bp, url_prefix='/user')
 app.register_blueprint(SCHEMA, url_prefix='/schema')
 
 # db.drop_all()

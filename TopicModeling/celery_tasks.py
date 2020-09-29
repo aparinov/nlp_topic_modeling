@@ -9,6 +9,7 @@ import traceback
 from factory import create_celery_app
 celery = create_celery_app()
 
+
 @celery.task(serializer="pickle")
 def run_stage(local: dict, data: dict) -> dict:
     try:
@@ -37,9 +38,9 @@ def run_stage(local: dict, data: dict) -> dict:
             for var in local:
                 if var in data["output"]:
                     if type(local[var]) != data["output"][var]:
-                        raise Exception("Output type mismatch for \"{}\", must be {} instead of {}.".format(var, str(data["output"][var]), str(type(local[var]))))
+                        raise Exception("Output type mismatch for \"{}\", must be {} instead of {}."
+                                        .format(var, str(data["output"][var]), str(type(local[var]))))
                     locals_cleared[var] = local[var]
-
 
             local = locals_cleared
 

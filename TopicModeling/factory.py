@@ -17,8 +17,10 @@ from celery import Celery
 
 def create_celery_app():#app=None):
     # app = app or create_app(config)
-    celery = Celery('tasks', broker='amqp://0.0.0.0:5672',
-                    accept_content=['pickle'], backend='db+sqlite:///db.sqlite3')
+    broker = "amqp://username:password@localhost:5672" #'amqp://0.0.0.0:5672'
+    backend = 'db+sqlite:///db.sqlite3'
+    celery = Celery('tasks', broker=broker,
+                    accept_content=['pickle'], backend=backend)
     celery.config_from_object("celeryconfig")
 
     # celery.conf.update(app.config)
