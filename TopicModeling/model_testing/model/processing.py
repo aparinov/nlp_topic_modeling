@@ -22,7 +22,7 @@ from model_testing.model.data_format import DataFormat
 from model_testing.model.enums import Langs
 from base64 import b64decode, b64encode
 from model_testing.workers import run, verify_input, verify_output, transfer_output_to_input, clean, prepare_input
-
+from model_testing.model.environment import Environment
 
 class Processing(BaseEntity):
     # TODO: test
@@ -34,10 +34,12 @@ class Processing(BaseEntity):
     input = Column(Integer, ForeignKey('formats.Id'))
     output = Column(Integer, ForeignKey('formats.Id'))
 
+    environment = Column(Integer, ForeignKey('environment.Id'))
+
     source = Column(LargeBinary())
     lang = Column(Enum(Langs))
 
-    args = Column(String(None), default="")
+    args_info = Column(String(None), default="")
 
     @staticmethod
     def get(id, name):
@@ -58,14 +60,17 @@ class Processing(BaseEntity):
                 raise Exception("The request must provide 'id' or 'name' of the sole Processing stage record.")
 
     @staticmethod
-    def create(name, input_id, input_name, output_id, output_name, source_uri, lang_name, args):
+    def create(name, input_id, input_name, output_id, output_name, source_uri,
+               lang_name, args_info, env_id, env_name, author):
         p = Processing()
         p.set_name(name)
         p.set_input(input_id, input_name)
         p.set_output(output_id, output_name)
+        p.set_environment(env_id, env_name)
         p.set_source(source_uri)
         p.set_lang(lang_name)
-        p.set_args(args)
+        p.set_args_info(args_info)
+        p.set_author(author)
         return p
 
     def set_name(self, name):
@@ -86,6 +91,10 @@ class Processing(BaseEntity):
         df = DataFormat.get(format_id, format_name)
         self.output = df.Id
 
+    def set_environment(self, env_id, env_name):
+        env = Environment.get(env_id, env_name)
+        self.environment = env.Id
+
     def set_source(self, source_uri):
         if type(source_uri) == str:
             req = urllib.request.Request(url=source_uri)
@@ -104,8 +113,12 @@ class Processing(BaseEntity):
             raise Exception("Language not supported. Languages available: {}".format(allowed))
         self.lang = Langs[lang_name]
 
-    def set_args(self, args):
-        self.args = args
+    def set_args_info(self, args_info):
+        if args_info is None:
+            raise Exception("'args_info' not specified.")
+        if type(args_info) != str:
+            raise Exception("'args_info' must be string.")
+        self.args_info = args_info
 
     def get_input(self):
         return db.session.query(DataFormat).filter(DataFormat.Id == self.input).first()
@@ -113,31 +126,41 @@ class Processing(BaseEntity):
     def get_output(self):
         return db.session.query(DataFormat).filter(DataFormat.Id == self.output).first()
 
-    def update(self, name, input_id, input_name, output_id, output_name, source_uri, lang_name, args):
+    def get_environment(self):
+        return db.session.query(Environment).filter(Environment.Id == self.environment).first()
+
+    def update(self, name, input_id, input_name, output_id, output_name,
+               source_uri, lang_name, env_id, env_name, args_info):
         if (self.name != name) and name:
             self.set_name(name)
         if input_id or input_name:
             self.set_input(input_id, input_name)
         if output_id or output_name:
             self.set_output(output_id, output_name)
+        if env_id or env_name:
+            self.set_environment(env_id, env_name)
         if source_uri:
             self.set_source(source_uri)
         if lang_name:
             self.set_lang(lang_name)
-        if args:
-            self.set_args(args)
+        if args_info:
+            self.set_args_info(args_info)
 
     def to_dict(self):
+        author = self.get_author()
+        env = self.get_environment()
         return {
             "id": self.Id,
             "name": self.name,
             "lang_name": self.lang.value,
             "input_name": self.get_output().name,
             "output_name": self.get_input().name,
-            "args": self.args
+            "args_info": self.args_info,
+            "author_username" : author.username,
+            "environment" : env.name#to_dict(),
         }
 
-    def get_chain_items(self, exe_id):
+    def get_chain_items(self, exe_id, args):
         inp = self.get_input()
         out = self.get_output()
 
@@ -147,9 +170,15 @@ class Processing(BaseEntity):
         out_schema = out.schema
         out_format = out.format.value
 
+        env = self.get_environment()
+
         return [
             verify_input.si(exe_id, inp_schema, inp_format),
-            run.si(exe_id, b64encode(self.source).decode('utf-8'), self.lang.value),
+            run.si(exe_id=exe_id,
+                   code=b64encode(self.source).decode('utf-8'),
+                   lang_name=self.lang.value,
+                   py_dependencies=env.py_dependencies,
+                   args=args),
             verify_output.si(exe_id, out_schema, out_format),
             transfer_output_to_input.si(exe_id)
         ]

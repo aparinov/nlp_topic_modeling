@@ -77,10 +77,13 @@ def upd_processing():
             new_lang_name = from_dict(u, 'new_lang_name')
             new_args = from_dict(u, 'new_args')
 
+            new_env_id = from_dict(u, 'new_env_id')
+            new_env_name = from_dict(u, 'new_env_name')
+
             try:
                 proc = Processing.get(id, name)
                 proc.update(new_name, new_input_id, new_input_name, new_output_id, new_output_name,
-                            new_source_uri, new_lang_name, new_args)
+                            new_source_uri, new_lang_name, new_env_id, new_env_name, new_args)
                 db.session.commit()
                 res.append(proc.to_dict())
             except Exception as e:
@@ -106,7 +109,7 @@ def post_processing():
     res = []
     incomplete_description = {"error": "Request must provide list 'to_post' of objects"
                                        " with 'name', 'input_id' ( or 'input_name'), 'output_id'"
-                                       " ( or 'output_name'), 'source_uri', 'lang_name', 'args'."}
+                                       " ( or 'output_name'), 'source_uri', 'lang_name', 'args_info'."}
     if to_post:
         for p in to_post:
             name = from_dict(p, 'name')
@@ -120,18 +123,20 @@ def post_processing():
             source_uri = from_dict(p, 'source_uri')
 
             lang_name = from_dict(p, 'lang_name')
-            args = from_dict(p, 'args')
+            args_info = from_dict(p, 'args_info')
 
-            full = all([x is not None for x in [name, source_uri, lang_name, args]] +
+            env_id = from_dict(p, 'env_id')
+            env_name = from_dict(p, 'env_name')
+
+            full = all([x is not None for x in [name, source_uri, lang_name, args_info]] +
                        [(input_id is not None) or (input_name is not None),
-                        (output_id is not None) or (output_name is not None)])
-
-            # from flask import current_app
-            # current_app.logger.info(full)
+                        (output_id is not None) or (output_name is not None),
+                        (env_id is not None) or (env_name is not None)])
 
             if full:
                 try:
-                    proc = Processing.create(name, input_id, input_name, output_id, output_name, source_uri, lang_name, args)
+                    proc = Processing.create(name, input_id, input_name, output_id, output_name,
+                                             source_uri, lang_name, args_info, env_id, env_name, g.user)
                     db.session.add(proc)
                     db.session.commit()
                     res.append(proc.to_dict())

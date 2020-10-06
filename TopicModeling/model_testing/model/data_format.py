@@ -32,11 +32,12 @@ class DataFormat(BaseEntity):
     __mapper_args__ = {'polymorphic_identity': 'format'}
 
     @staticmethod
-    def create(name, format_name, uri):#, session):
+    def create(name, format_name, uri, author):#, session):
         df = DataFormat()
         df.set_name(name)
         df.set_format(format_name)
         df.set_schema(uri)
+        df.set_author(author)
         return df
 
     @staticmethod
@@ -91,7 +92,7 @@ class DataFormat(BaseEntity):
         else:
             raise Exception("Schema URI must be string.")
 
-    def update_dataformat(self, name, format_name, schema_uri):
+    def update(self, name, format_name, schema_uri):
         if (self.name != name) and (name):
             self.set_name(name)
         if (str(self.format) != format_name) and (format_name):
@@ -100,10 +101,13 @@ class DataFormat(BaseEntity):
             self.set_schema(schema_uri)
 
     def to_dict(self):
+        author = self.get_author()
         df = {
             "id" : self.Id,
             "name" : self.name,
             "schema" : self.schema,
-            "format" : self.format.value
+            "format" : self.format.value,
+            "author_username" : author.username,
+            "author_id" : author.id
         }
         return df

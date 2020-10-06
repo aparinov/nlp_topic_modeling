@@ -53,7 +53,11 @@ def urls_removal(text):
 # Remove emails
 def emails_removal(text):
     urls = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
-    return re.sub(urls, ' ', text).replace('\n',' ').replace('-',' ')
+    return re.sub(urls, ' ', text).replace('\n', ' ').replace('-', ' ')
+
+
+import argparse
+parser = argparse.ArgumentParser(description='Process some integers.')
 
 
 data_path = os.getcwd() + '/model_testing/data'

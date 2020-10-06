@@ -15,7 +15,7 @@ def get_all_dataset():
     dss = db.session.query(DataSet).all()
 
     for ds in dss:
-        res["response"].append(ds.to_dict())
+        res["response"].append(ds.to_dict_light())
 
     return jsonify(res)
 
@@ -106,12 +106,12 @@ def post_dataset():
             uri = from_dict(p, 'uri')
 
             try:
-                ds = DataSet.create(title, uri, format_id, format_name)
+                ds = DataSet.create(title, uri, format_id, format_name, g.user)
                 db.session.add(ds)
                 db.session.commit()
                 id = ds.Id
                 title = ds.Title
-                res.append({"id": id, "name": title})
+                res.append(ds.to_dict_light())
             except Exception as e:
                 err = {"error": str(e)}
                 if title:

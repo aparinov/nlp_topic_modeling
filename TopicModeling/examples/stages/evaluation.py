@@ -1,8 +1,5 @@
-from bs4 import BeautifulSoup
-import unidecode
 from sklearn.cluster import KMeans
 
-import re
 import numpy as np
 
 from sklearn.preprocessing import StandardScaler
@@ -55,10 +52,6 @@ data_path = os.getcwd() + '/model_testing/data'
 inp_filename = data_path + "/input/data.txt"
 out_filename = data_path + "/output/data.txt"
 
-
-inp_filename = "./embedded.txt"
-output_filename = "./results.txt"
-
 dataset = read_ds_from_file(inp_filename)
 
 data_content, data_names, data_topic = retrieve_data(dataset)
@@ -99,4 +92,4 @@ for label in set(labels):
             cluster["cluster_ids"].append(data_names[i])
     result["clusters"].append(cluster)
 
-write_ds_to_file(output_filename, result)
+write_ds_to_file(out_filename, result)

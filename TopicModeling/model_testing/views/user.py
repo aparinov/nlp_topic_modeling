@@ -14,6 +14,7 @@ from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSign
 
 user_bp = Blueprint("user", __name__)
 
+
 @user_bp.route('/get_all', methods=["GET"])
 def get_all_user():
     users = []
@@ -33,19 +34,18 @@ def get_user():
             username = from_dict(g, 'username')
             id = from_dict(g, 'id')
 
-            if (id is not None) or (username is not None):
-                try:
-                    us = User.get(id, username)
-                    res["response"].append(us.to_dict())
-                except Exception as e:
-                    err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
-                    if username:
-                        err['username'] = username
+            try:
+                us = User.get(id, username)
+                res["response"].append(us.to_dict())
+            except Exception as e:
+                err = {"error": str(e)}
+                if id:
+                    err['id'] = id
+                if username:
+                    err['username'] = username
                     res["response"].append(err)
-            else:
-                res['response'].append(incomplete_description)
+                else:
+                    res['response'].append(incomplete_description)
     else:
         res['response'].append(incomplete_description)
 
@@ -55,75 +55,92 @@ def get_user():
 @user_bp.route('/post', methods=["POST"])
 @auth.login_required
 def create_user():
+    to_post = request.json.get('to_post')
+    res = {"posted" : []}
 
     if not g.user.admin_rights:
-        abort(101, "Permission required! Only administrator can create users.")
+        res["posted"].append({"error" : "Permission required! Only administrator can create users."})
+    elif to_post:
+        for c in to_post:
+            try:
+                username = from_dict(c, 'username')
+                password = from_dict(c, 'password')
+                admin_rights = from_dict(c, 'admin_rights')
+                exp_admin_rights = from_dict(c, 'exp_admin_rights')
 
-    username = request.json.get('username')
-    password = request.json.get('password')
-    admin_rights = request.json.get('admin_rights')
-    exp_admin_rights = request.json.get('exp_admin_rights')
+                user = User.create(username, password, admin_rights, exp_admin_rights)
 
-    if username is None or password is None:
-        abort(400, 'Missing arguments!')
-    if User.query.filter_by(username = username).first() is not None:
-        abort(400, "User existing!")
-
-    user = User(username = username, admin_rights=admin_rights, exp_admin_rights=exp_admin_rights)
-    user.hash_password(password)
-    db.session.add(user)
-    db.session.commit()
-
-    return jsonify({ 'username': user.username }), 201
+                db.session.add(user)
+                db.session.commit()
+                message = user.to_dict()
+            except Exception as e:
+                message = {"error" : str(e)}
+            res["posted"].append(message)
+    else:
+        res["posted"].append({"error" : "Request must provide 'to_post' array of objects with 'username', "
+                                        "'password', 'admin_rights', 'exp_admin_rights' fields."})
+    return jsonify(res)
 
 
 @user_bp.route('/update', methods=["PATCH"])
 @auth.login_required
 def update_user():
+    to_update = request.json.get('to_update')
+    res = {"updated" : []}
+
     if not g.user.admin_rights:
-        abort(101, "Permission required! Only administrator can update users.")
+        res["updated"].append({"error" : "Permission required! Only administrator can update users."})
+    elif to_update:
+        for u in to_update:
+            try:
+                id = from_dict(u, 'id')
+                username = from_dict(u, 'username')
+                new_username = from_dict(u, 'new_username')
+                new_password = from_dict(u, 'new_password')
+                new_admin_rights = from_dict(u, 'new_admin_rights')
+                new_exp_admin_rights = from_dict(u, 'new_exp_admin_rights')
 
-    username = request.json.get('username')
-    password = request.json.get('password')
-    admin_rights = request.json.get('admin_rights')
-    exp_admin_rights = request.json.get('exp_admin_rights')
+                user = User.get(id, username)
+                user.update(new_username, new_password, new_admin_rights, new_exp_admin_rights)
 
-    user = User.query.filter_by(username = username).first()
-    response = {}
+                db.session.commit()
+                message = user.to_dict()
+                res["updated"].append(message)
+            except Exception as e:
+                res["updated"].append({"error": str(e)})
 
-    if not user:
-        abort(404, "User does not exist")
-
-    if password is not None:
-        user.hash_password(password)
-        response['password'] = "changed"
-
-    if admin_rights is not None:
-        user.admin_rights = admin_rights
-        response['admin_rights'] = "changed"
-
-    if exp_admin_rights is not None:
-        user.exp_admin_rights = exp_admin_rights
-        response['exp_admin_rights'] = "changed"
-    db.session.commit()
-
-    return response
+    else:
+        res["updated"].append({"error" : "Request must provide 'to_update' array of objects with 'username',"
+                                         " 'new_password', 'new_admin_rights', 'new_exp_admin_rights' fields."})
+    return jsonify(res)
 
 
 @user_bp.route('/delete', methods=["DELETE"])
 @auth.login_required
 def delete_user():
+    to_delete = request.json.get('to_delete')
+    res = {"deleted":[]}
+
     if not g.user.admin_rights:
-        abort(101, "Permission required! Only administrator can delete users.")
+        res["deleted"].append({"error" : "Permission required! Only administrator can delete users."})
+    elif to_delete:
+        for d in to_delete:
+            try:
+                username = from_dict(d, 'username')
+                id = from_dict(d, 'id')
 
-    username = request.json.get('username')
-    user = User.query.filter_by(username = username).first()
+                user = User.get(id, username)
+                db.session.delete(user)
+                db.session.commit()
 
-    if not user:
-        abort(404, "User does not exist")
-    db.session.delete(user)
-    db.session.commit()
-    return {'result': username + " deleted"}
+                message = user.to_dict()
+            except Exception as e:
+                message = {"error" : str(e)}
+            res["deleted"].append(message)
+    else:
+        res["deleted"].append({"error" : "Request must provide to_delete array of objects with 'username' field."})
+
+    return jsonify(res)
 
 
 @user_bp.route('/get_token')

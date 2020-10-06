@@ -12,7 +12,7 @@ from sqlalchemy import Enum
 from sqlalchemy import BIGINT, NVARCHAR, TIMESTAMP, ForeignKey, FLOAT, BLOB, LargeBinary
 from sqlalchemy.orm import sessionmaker
 
-import datetime
+from datetime import datetime
 # from schemas import tm_dataset_schema, tm_dataset_xsd
 from urllib.parse import urlparse
 import urllib.request
@@ -67,7 +67,7 @@ class Experiment(BaseEntity):
                 raise Exception("The request must provide 'id' or 'title' of the sole Experiment record.")
 
     @staticmethod
-    def create(title, short_title, comment, processing_arr, baseline, res_id, res_name, dataset_id, dataset_title):
+    def create(title, short_title, comment, processing_arr, baseline, res_id, res_name, dataset_id, dataset_title, author):
         e = Experiment()
         e.set_title(title)
         e.set_short_title(short_title)
@@ -76,10 +76,11 @@ class Experiment(BaseEntity):
         e.set_baseline(baseline)
         e.set_result_format(res_id, res_name)
         e.set_dataset(dataset_id, dataset_title)
+        e.set_author(author)
         return e
 
     def set_title(self, title):
-        if not title:
+        if title is None:
             raise Exception("Title not provided.")
         if type(title) is not str:
             raise Exception("Title must be string.")
@@ -117,12 +118,11 @@ class Experiment(BaseEntity):
         self.ProcessingIDs = " ".join(str(s) for s in arr)
 
     def set_baseline(self, num):
-        if not num:
+        current_app.logger.info("Baseline = " + str(num))
+        if num is None:
             raise Exception("Baseline not provided.")
-        if type(num) != int:
-            raise Exception("Baseline should be integer in range [0, 100].")
-        if not (0 <= num <= 100):
-            raise Exception("Baseline should be integer in range [0, 100].")
+        if type(num) != float:
+            raise Exception("Baseline should be floating point number.")
         self.Baseline = num
 
     def set_result_format(self, id, name):
@@ -180,8 +180,16 @@ class Experiment(BaseEntity):
     # Title, ShortTitle, Comment, ProcessingIDs, Baseline, ResultFormat, Dataset
 
     def to_dict(self):
-        res = {"id": self.Id, "title": self.Title, "short_title": self.ShortTitle, "comment": self.Comment,
-               "baseline": self.Baseline}
+        author = self.get_author()
+        res = {
+            "id": self.Id,
+            "title": self.Title,
+            "short_title": self.ShortTitle,
+            "comment": self.Comment,
+            "baseline": self.Baseline,
+            "author_username" : author.username,
+            "author_id" : author.id
+        }
 
         f = self.get_result_format()
         if f:
@@ -197,17 +205,29 @@ class Experiment(BaseEntity):
 
         return res
 
-
-    def run(self):
+    def run(self, delayed, args, user):
         from model_testing.workers import retrieve_ids, chain_status, finalize_exp, verify_input
         from model_testing.model.exp_execution import ExpExecution
 
+        launch_time = None
+
+        if delayed:
+            if type(delayed) == str:
+                launch_time = datetime.strptime(delayed, '%Y-%m-%d %H:%M:%S.%f')
+            else:
+                raise Exception("The time of delayed task start should be a string in the format: "
+                                "'Year-Month-Day Hour:Minute:Second (float)'")
         ds = self.get_dataset()
         procs = self.get_processing()
 
+        if args is None:
+            args = ["" for p in procs]
+        if len(procs) != len(args):
+            raise Exception("{} args provided for {} processing stages.".format(len(args) ,len(procs)))
+
         res_f = self.get_result_format()
 
-        exp_exe = ExpExecution.create(self)
+        exp_exe = ExpExecution.create(self, user)
         db.session.add(exp_exe)
         db.session.commit()
 
@@ -216,15 +236,18 @@ class Experiment(BaseEntity):
         schema = res_f.schema
         format_name = res_f.format.value
 
-
         chain_items = ds.get_chain_items(exe_id)
-        for proc in procs:
-            chain_items = chain_items + proc.get_chain_items(exe_id)
+
+        # for proc in procs:
+        for i in range(len(procs)):
+            proc = procs[i]
+            arg = args[i]
+            chain_items = chain_items + proc.get_chain_items(exe_id, arg)
         chain_items = chain_items + [verify_input.si(exe_id, schema, format_name), finalize_exp.si(exe_id, ADMIN_NAME, ADMIN_PASS)]
 
         from celery import signature
 
-        ch = chain(chain_items).apply_async()
+        ch = chain(chain_items).apply_async(eta=launch_time, acks_late = True)
 
         ids = retrieve_ids(ch)
         task_names = [signature(s)['task'] for s in chain_items]

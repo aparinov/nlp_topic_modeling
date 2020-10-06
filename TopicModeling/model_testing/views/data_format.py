@@ -66,15 +66,13 @@ def upd_dataformat():
             try:
                 df = DataFormat.get(id, name)
 
-                df.update_dataformat(new_name, new_format, new_schema_uri)
+                df.update(new_name, new_format, new_schema_uri)
 
                 id = df.Id
                 name = df.name
-                format = df.format
-                schema = df.schema
 
                 db.session.commit()
-                res.append({"id": id, "name": name, "format": format, "schema":schema})
+                res.append(df.to_dict())
 
             except Exception as e:
                 err = {"error": str(e)}
@@ -104,12 +102,10 @@ def post_dataformat():
             schema_uri = from_dict(p, 'schema_uri')
 
             try:
-                df = DataFormat.create(name, format, schema_uri)
+                df = DataFormat.create(name, format, schema_uri, g.user)
                 db.session.add(df)
                 db.session.commit()
-                id = df.Id
-                name = df.name
-                res.append({"id": id, "name": name})
+                res.append(df.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
                 if name:
@@ -142,7 +138,7 @@ def del_dataformat():
 
                 db.session.delete(df)
                 db.session.commit()
-                res.append({"id": id, "name": name})
+                res.append(df.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
                 if id:

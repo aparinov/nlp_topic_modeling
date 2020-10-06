@@ -18,6 +18,7 @@ $ docker run -d --hostname celery-rabbit --name celery-rabbit \
 Run celery worker.
 ```sh
 $ celery -A model_testing.run:celery worker --loglevel=info
+$ celery -A model_testing.run:celery beat --loglevel=info
 ```
 
 Run app itself.

@@ -62,6 +62,7 @@ def create_app(config=Config):
     from model_testing.model.experiment import Experiment
     from model_testing.model.exp_execution import ExpExecution
     from model_testing.model.exp_result import ExpResult
+    from model_testing.model.environment import Environment
 
     # db.drop_all(app=app)
     # db.create_all(app=app)
@@ -72,6 +73,7 @@ def create_app(config=Config):
     from model_testing.views.processing import processing
     from model_testing.views.experiment import experiment
     from model_testing.views.exp_result import result
+    from model_testing.views.environment import environment
 
     app.register_blueprint(user_bp, url_prefix='/user')
     app.register_blueprint(data_format, url_prefix='/data_format')
@@ -79,6 +81,7 @@ def create_app(config=Config):
     app.register_blueprint(processing, url_prefix='/processing')
     app.register_blueprint(experiment, url_prefix='/experiment')
     app.register_blueprint(result, url_prefix='/result')
+    app.register_blueprint(environment, url_prefix='/environment')
 
     init_celery(app, celery)
 
@@ -100,7 +103,7 @@ def verify_password(username_or_token, password):
 
         if not user or not user.verify_password(password):
             return False
-    # g.user = user
+    g.user = user
     return True
 
 

@@ -35,12 +35,13 @@ class DataSet(BaseEntity):
     __mapper_args__ = {'polymorphic_identity': 'dataset'}
 
     @staticmethod
-    def create(title, uri, format_id, format_name):
+    def create(title, uri, format_id, format_name, author):
         ds = DataSet()
         ds.set_title(title)
         ds.set_data_format(format_id, format_name)
         ds.set_data(uri)
         ds.validate()
+        ds.set_author(author)
         return ds
 
     @staticmethod
@@ -137,12 +138,28 @@ class DataSet(BaseEntity):
 
     def to_dict(self):
         df = DataFormat.get(self.DataFormat, None)
+        author = self.get_author()
         ds = {
             "id" : self.Id,
             "title" : self.Title,
             "data" : self.Data.decode("utf-8"),
             "format_name" : df.name,
-            "format_id" : df.Id
+            "format_id" : df.Id,
+            "author_username" : author.username,
+            "author_id" : author.id
+        }
+        return ds
+
+    def to_dict_light(self):
+        df = DataFormat.get(self.DataFormat, None)
+        author = self.get_author()
+        ds = {
+            "id" : self.Id,
+            "title" : self.Title,
+            "format_name" : df.name,
+            "format_id" : df.Id,
+            "author_username" : author.username,
+            "author_id" : author.id
         }
         return ds
 

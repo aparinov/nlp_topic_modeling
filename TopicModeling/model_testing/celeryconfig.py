@@ -29,6 +29,7 @@ accept_content = ['json', 'pickle']
 # result_extended = True
 task_track_started = True
 result_expires = None
+enable_utc = True
 # CELERY_TASK_RESULT_EXPIRES = None
 
 # result_serializer = 'json'

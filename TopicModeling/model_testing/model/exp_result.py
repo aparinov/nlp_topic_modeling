@@ -51,6 +51,7 @@ class ExpResult(BaseEntity):
         # r.set_value(value)
         r.set_experiment(experiment)
         r.set_result(result)
+        # r.set_author(experiment.get_author())
         return r
 
     @staticmethod
@@ -75,14 +76,20 @@ class ExpResult(BaseEntity):
         self.result = result.encode('utf-8')
 
     def to_dict(self):
+        author = self.get_author()
         return {
             "id" : self.Id,
             "experiment" : Experiment.get(self.experiment, None).to_dict(),
-            "result" : self.result.decode('utf-8')
+            "result" : self.result.decode('utf-8'),
+            "author_username" : author.username,
+            "author_id" : author.id
         }
 
     def to_dict_light(self):
+        author = self.get_author()
         return {
             "id" : self.Id,
             "experiment" : Experiment.get(self.experiment, None).to_dict(),
+            "author_username" : author.username,
+            "author_id" : author.id
         }

@@ -11,6 +11,7 @@ from celery.result import AsyncResult
 from requests.auth import HTTPBasicAuth
 from requests import post
 from model_testing.config import ADMIN_NAME, ADMIN_PASS
+import json
 
 
 def report_failure(exe_id, e):
@@ -51,6 +52,9 @@ def finalize_exp(exe_id, username, password):
         }
 
         post(url, auth=auth, json=data)
+
+        if os.path.isfile(path):
+            os.remove(path)
     except Exception as e:
         report_failure(exe_id, e)
 
@@ -60,7 +64,7 @@ def clean(exe_id):
     # TODO: Test
     try:
         data_folder = os.getcwd() + '/model_testing/data/'
-        for path in [data_folder + "executable", data_folder + "input", data_folder + "output"]:
+        for path in [data_folder + "stage", data_folder + "input", data_folder + "output"]:
             for file in os.listdir(path):
                 file_path = os.path.join(path, file)
                 try:
@@ -135,18 +139,52 @@ def transfer_output_to_input(exe_id, ):
         report_failure(exe_id, e)
 
 
+import sys
+def install_package(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+
 @celery_app.task(name="run_stage")
-def run(exe_id, code="", lang_name="python"):
+def run(exe_id, code="", lang_name="python", py_dependencies=None, args=""):
     try:
+        source = b64decode(code)
+        base_path = os.getcwd() + '/model_testing/data/stage/'
+
         if lang_name == "python":
-            exec(b64decode(code), globals(), {})
+
+            if py_dependencies:
+                from model_testing.model.environment import get_packages
+
+                required_packages = py_dependencies.split(" ")
+                installed_packages = get_packages()
+
+                for package in required_packages:
+                    package_name, package_version = package.split("==")
+                    if package_name not in installed_packages:
+                        install_package(package)
+                    elif installed_packages[package_name] != package_version:
+                        install_package(package)
+
+            # print(args * 1000)
+            #
+            # d = dict(locals(), **globals())
+            # exec(source, d, d)
+            path = base_path + 'script.py'
+            if os.path.isfile(path):
+                    os.remove(path)
+
+            with open(path, 'wb') as file:
+                file.write(source)
+            os.chmod(path, 0b111101101)
+
+            os.system(" ".join(['python3', path, args]))
+
+            if os.path.isfile(path):
+                os.remove(path)
 
         elif lang_name == "exe":
-            path = os.getcwd() + '/model_testing/data/executable/program.exe'
-
             try:
-                source = b64decode(code)
-                path = os.getcwd() + '/model_testing/data/executable/program.exe'
+                path = base_path + 'program.exe'
 
                 if os.path.isfile(path):
                     os.remove(path)

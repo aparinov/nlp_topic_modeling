@@ -1,11 +1,4 @@
-from bs4 import BeautifulSoup
-import unidecode
-
-import re
 from transformers import RobertaTokenizer, TFRobertaModel
-
-import numpy as np
-
 import tensorflow as tf
 import os
 import json

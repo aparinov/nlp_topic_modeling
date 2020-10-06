@@ -9,7 +9,7 @@ from model_testing.model.exp_execution import ExpExecution
 from model_testing import from_dict
 from model_testing.model.enums import ExecutionStatus
 from model_testing.model.exp_result import ExpResult
-
+from model_testing.model.user import User
 
 experiment = Blueprint("experiment" , __name__)
 
@@ -52,6 +52,45 @@ def get_experiment():
                     res["response"].append(err)
             else:
                 res['response'].append(incomplete_description)
+    else:
+        res['response'].append(incomplete_description)
+
+    return jsonify(res)
+
+
+@experiment.route('/get_by_user', methods=["GET"])
+@auth.login_required()
+def get_experiment_by_user():
+    to_get = request.json.get('to_get')
+    res = {"response": []}
+
+    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'user_id' or 'username'."}
+    if to_get:
+        for g in to_get:
+            username = g['username'] if 'username' in g.keys() else None
+            user_id = g['user_id'] if 'user_id' in g.keys() else None
+
+            # if (id is not None) or (title is not None):
+            try:
+                user = User.get(user_id, username)
+                user_id = user.id
+                exps = db.session.query(Experiment).filter(Experiment.Author == user_id).all()
+                local_res = {
+                    "user": user.to_dict(),
+                    "experiments": []
+                }
+                for exp in exps:
+                    local_res["experiments"].append(exp.to_dict())
+                res["response"].append(local_res)
+            except Exception as e:
+                err = {"error": str(e)}
+                if user_id:
+                    err['user_id'] = user_id
+                if username:
+                    err['username'] = username
+                res["response"].append(err)
+            # else:
+            #     res['response'].append(incomplete_description)
     else:
         res['response'].append(incomplete_description)
 
@@ -133,7 +172,7 @@ def post_experiment():
             if full:
                 try:
                     exp = Experiment.create(title, short_title, comment, processing_arr, baseline,
-                                            res_format_id, res_format_name, dataset_id, dataset_title)
+                                            res_format_id, res_format_name, dataset_id, dataset_title, g.user)
                     db.session.add(exp)
                     db.session.commit()
                     res.append(exp.to_dict())
@@ -187,18 +226,31 @@ def del_experiment():
 def run():
     to_run = request.json.get('to_run')
     res = []
+    args_message = "'args' (optional) is an array of strings of arguments to" \
+                           " corresponding preprocessing stages."
 
     if to_run:
         for r in to_run:
             title = from_dict(r, 'title')
             id = from_dict(r, 'id')
+            delayed = from_dict(r, 'delayed')
+            args = from_dict(r, 'args')
 
             try:
                 exp = Experiment.get(id, title)
-                # message = exp.to_dict()
+                # TODO: Test
+                if g.user.exp_admin_rights or (exp.Author == g.user):
 
-                message = exp.run()
+                    if args and (type(args) is list):
+                        for a in args:
+                            if type(a) is not str:
+                                raise Exception(args_message)
+                    elif args and (type(args) is not list):
+                        raise Exception(args_message)
 
+                    message = exp.run(delayed, args, g.user)
+                else:
+                    raise Exception("Only Experiment Admin can run someone else's experiment.")
                 res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
@@ -208,7 +260,11 @@ def run():
                     err['title'] = title
                 res.append(err)
     else:
-        res.append({"error": "Request must provide list 'to_run' of objects with 'id' or 'title'."})
+        res.append({"error": "Request must provide list 'to_run' of objects with 'id' or 'title'. "
+                             "'delayed' and 'args' are optional. "
+                             "The time of delayed task start should be a string in the format: "
+                             "'Year-Month-Day Hour:Minute:Second'. "
+                             "'args' is an array of strings of arguments to corresponding preprocessing stages."})
 
     return jsonify({"started": res})
 
@@ -231,6 +287,27 @@ def monitoring():
         res.append({"error": "Request must provide list 'to_monitor' of objects with 'id'."})
 
     return jsonify({"started": res})
+
+
+@experiment.route('/cancel', methods=["DELETE"])
+@auth.login_required
+def cancel():
+    res = []
+    to_cancel = request.json.get('to_cancel')
+
+    if to_cancel:
+        for c in to_cancel:
+            id = from_dict(c, 'id')
+            try:
+                exp_exe = ExpExecution.get(id)
+                exp_exe.cancel()
+                res.append(exp_exe.to_dict())
+            except Exception as e:
+                res.append({"error": str(e)})
+    else:
+        res.append({"error": "Request must provide list 'to_monitor' of objects with 'id'."})
+
+    return jsonify({"canceled": res})
 
 
 # @experiment.route('/report_error', methods=["POST"])

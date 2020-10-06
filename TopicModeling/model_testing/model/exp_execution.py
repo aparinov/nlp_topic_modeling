@@ -26,6 +26,7 @@ from model_testing.model.enums import ExecutionStatus
 from celery import chain
 from model_testing.model.experiment import Experiment
 from model_testing.workers import chain_status
+from model_testing import celery
 
 
 class ExpExecution(BaseEntity):
@@ -40,12 +41,13 @@ class ExpExecution(BaseEntity):
     __mapper_args__ = {'polymorphic_identity': 'execution'}
 
     @staticmethod
-    def create(exp):
+    def create(exp, author):
         e = ExpExecution()
         status = ExecutionStatus.started
         # e.set_ids(arr)
         e.set_status(status)
         e.set_experiment(exp)
+        e.set_author(author)
         return e
 
     @staticmethod
@@ -85,9 +87,17 @@ class ExpExecution(BaseEntity):
         exp = self.get_experiment()
         ids = self.get_ids()
         names = self.get_names()
+        author = self.get_author()
         return {
             'execution_id': self.Id,
             'experiment' : exp.to_dict(),
             'status': self.status.value,
-            "stages": chain_status(ids, names)
+            "stages": chain_status(ids, names),
+            "author_username" : author.username,
+            "author_id" : author.id
         }
+
+    def cancel(self):
+        for id in self.get_ids():
+            celery.control.revoke(id, terminate=True, signal='SIGKILL')
+        self.set_status(ExecutionStatus.finished)

@@ -10,13 +10,14 @@ from model_testing.model.exp_result import ExpResult
 from model_testing.model.exp_execution import ExpExecution
 from model_testing.model.experiment import Experiment
 from model_testing.model.enums import ExecutionStatus
+from model_testing.model.user import User
 
 result = Blueprint("result", __name__)
 
 
 @result.route('/get_all', methods=["GET"])
 @auth.login_required()
-def get_all_experiment():
+def get_all_result():
     res = {"response": []}
     all_exp_res = db.session.query(ExpResult).all()
 
@@ -28,7 +29,7 @@ def get_all_experiment():
 
 @result.route('/get', methods=["GET"])
 @auth.login_required()
-def get_experiment():
+def get_result():
     to_get = request.json.get('to_get')
 
     res = {"response": []}
@@ -55,9 +56,48 @@ def get_experiment():
     return jsonify(res)
 
 
+@result.route('/get_by_user', methods=["GET"])
+@auth.login_required()
+def get_result_by_user():
+    to_get = request.json.get('to_get')
+    res = {"response": []}
+
+    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'user_id' or 'username'."}
+    if to_get:
+        for g in to_get:
+            username = g['username'] if 'username' in g.keys() else None
+            user_id = g['user_id'] if 'user_id' in g.keys() else None
+
+            # if (id is not None) or (title is not None):
+            try:
+                user = User.get(user_id, username)
+                user_id = user.id
+                exps = db.session.query(Experiment).filter(Experiment.Author == user_id).all()
+                local_res = {
+                    "user": user.to_dict(),
+                    "experiments": []
+                }
+                for exp in exps:
+                    local_res["experiments"].append(exp.to_dict())
+                res["response"].append(local_res)
+            except Exception as e:
+                err = {"error": str(e)}
+                if user_id:
+                    err['user_id'] = user_id
+                if username:
+                    err['username'] = username
+                res["response"].append(err)
+            # else:
+            #     res['response'].append(incomplete_description)
+    else:
+        res['response'].append(incomplete_description)
+
+    return jsonify(res)
+
+
 @result.route('/post', methods=["POST"])
 @auth.login_required()
-def post_experiment():
+def post_result():
     to_post = request.json.get('to_post')
     res = []
     incomplete_description = {"error": "Request must provide list 'to_post' of objects with 'exe_id', 'result'."}
@@ -76,6 +116,7 @@ def post_experiment():
                 exp_res = ExpResult()
                 exp_res.set_experiment(exp)
                 exp_res.set_result(result)
+                exp_res.set_author(exp_exe.get_author())
 
                 db.session.add(exp_res)
                 db.session.commit()
@@ -89,7 +130,7 @@ def post_experiment():
 
 @result.route('/delete', methods=["DELETE"])
 @auth.login_required()
-def del_experiment():
+def del_result():
     to_delete = request.json.get('to_delete')
     res = []
 
