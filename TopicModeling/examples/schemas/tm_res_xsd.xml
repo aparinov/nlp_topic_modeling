@@ -1,0 +1,27 @@
+
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <xsd:element name="experimentResult" type="experiment-type" />
+   <xsd:complexType name="experiment-type">
+      <xsd:sequence>
+         <xsd:element name="clusters" type="clusters-type" />
+         <xsd:element name="metricType" type="xsd:string" />
+         <xsd:element name="metricValue" type="xsd:int" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="clusters-type">
+      <xsd:sequence>
+         <xsd:element name="cluster" type="cluster-type" minOccurs="1" maxOccurs="unbounded" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="cluster-type">
+      <xsd:sequence>
+         <xsd:element name="clusterName" type="xsd:string" />
+         <xsd:element name="clusterIds" type="ids-type" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="ids-type">
+      <xsd:sequence>
+         <xsd:element name="id" type="xsd:int" minOccurs="1" maxOccurs="unbounded" />
+      </xsd:sequence>
+   </xsd:complexType>
+</xsd:schema>

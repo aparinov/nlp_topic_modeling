@@ -1,0 +1,32 @@
+
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <xsd:element name="dataset" type="dataset-type" />
+   <xsd:complexType name="dataset-type">
+      <xsd:sequence>
+         <xsd:element name="name" type="xsd:string" />
+         <xsd:element name="topics" type="topics-type" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="topics-type">
+      <xsd:sequence>
+         <xsd:element name="topic" type="topic-type" minOccurs="1" maxOccurs="unbounded" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="topic-type">
+      <xsd:sequence>
+         <xsd:element name="name" type="xsd:string" />
+         <xsd:element name="documents" type="documents-type" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="documents-type">
+      <xsd:sequence>
+         <xsd:element name="document" type="document-type" minOccurs="1" maxOccurs="unbounded" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="document-type">
+      <xsd:sequence>
+         <xsd:element name="name" type="xsd:string" />
+         <xsd:element name="content" type="xsd:string" />
+      </xsd:sequence>
+   </xsd:complexType>
+</xsd:schema>
