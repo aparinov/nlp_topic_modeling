@@ -6,9 +6,86 @@ from dicttoxml import dicttoxml
 import json
 import lxml.etree as etree
 import re
-from schemas import tm_dataset_instance, tm_dataset_schema, \
-    tm_dataset_xsd, validate_json, validate_xml
+from model_testing.schemas import validate_json, validate_xml
 
+tm_dataset_xsd = """
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <xsd:element name="dataset" type="dataset-type" />
+   <xsd:complexType name="dataset-type">
+      <xsd:sequence>
+         <xsd:element name="name" type="xsd:string" />
+         <xsd:element name="topics" type="topics-type" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="topics-type">
+      <xsd:sequence>
+         <xsd:element name="topic" type="topic-type" minOccurs="1" maxOccurs="unbounded" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="topic-type">
+      <xsd:sequence>
+         <xsd:element name="name" type="xsd:string" />
+         <xsd:element name="documents" type="documents-type" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="documents-type">
+      <xsd:sequence>
+         <xsd:element name="document" type="document-type" minOccurs="1" maxOccurs="unbounded" />
+      </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="document-type">
+      <xsd:sequence>
+         <xsd:element name="name" type="xsd:string" />
+         <xsd:element name="content" type="xsd:string" />
+      </xsd:sequence>
+   </xsd:complexType>
+</xsd:schema>
+"""
+
+tm_dataset_schema = """{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Dataset structure description for topic modeling.",
+    "type": "object",
+    "required": ["name", "topics"],
+    "properties": {
+        "topics": {
+            "type": "array",
+            "items": {"$ref" : "#/definitions/topic"},
+            "default": []
+        },
+        "name": {
+            "type": "string",
+            "description": "The name of the dataset."
+        }
+    },
+    "definitions": {
+        "topic": {
+            "type": "object",
+            "required": ["name", "documents"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the topic."
+                },
+                "documents": {
+                    "type": "array",
+                    "items": {"$ref":"#/definitions/document"}
+                }
+            }
+        },
+        "document": {
+            "type": "object",
+            "required": ["name", "content"],
+            "properties": {
+                "name": {
+                    "type":"string",
+                    "description": "The name of the document."
+                },
+                "content": {"type":"string"}
+            }
+        }
+    }
+}"""
 
 if __name__ == "__main__":
     """Supplementary code for dataset formatting."""
@@ -67,7 +144,6 @@ if __name__ == "__main__":
 
     # with open("20news-xs.json", "w") as file:
     #     file.write(jsonv)
-
 
     # with open(data['name'] + ".xml", "w") as file:
     #     file.write(xmlv)
