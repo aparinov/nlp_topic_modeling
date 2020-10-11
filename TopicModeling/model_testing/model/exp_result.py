@@ -20,7 +20,7 @@ class ExpResult(BaseEntity):
 
 
     @staticmethod
-    def create(baseline, value, experiment, result):
+    def create(experiment, result):
         r = ExpResult()
         r.set_experiment(experiment)
         r.set_result(result)

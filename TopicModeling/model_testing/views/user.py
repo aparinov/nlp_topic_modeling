@@ -123,10 +123,11 @@ def delete_user():
                 user_id = from_dict(d, 'user_id')
 
                 user = User.get(user_id, username)
-                db.session.delete(user)
-                db.session.commit()
-
-                message = user.to_dict()
+                message = User.delete(user)
+                # db.session.delete(user)
+                # db.session.commit()
+                #
+                # message = user.to_dict()
             except Exception as e:
                 message = {"error" : str(e)}
             res["deleted"].append(message)

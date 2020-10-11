@@ -136,10 +136,11 @@ def del_result():
 
             try:
                 exp_res = ExpResult.get(res_id)
-                message = exp_res.to_dict_light()
+                message = ExpResult.delete(exp_res)
+                # message = exp_res.to_dict_light()
                 #
-                db.session.delete(exp_res)
-                db.session.commit()
+                # db.session.delete(exp_res)
+                # db.session.commit()
                 #
                 res.append(message)
             except Exception as e:

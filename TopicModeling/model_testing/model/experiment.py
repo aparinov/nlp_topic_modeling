@@ -28,7 +28,7 @@ class Experiment(BaseEntity):
 
     processing_ids = Column(String(None), default="")
 
-    baseline = Column(Integer, default=0)
+    baseline = Column(FLOAT, default=0.)
 
     result_format = Column(Integer, ForeignKey('formats.id'))
     dataset = Column(Integer, ForeignKey('datasets.id'))
@@ -71,7 +71,7 @@ class Experiment(BaseEntity):
             raise Exception("Title not provided.")
         if type(title) is not str:
             raise Exception("Title must be string.")
-        p = db.session.query(Experiment).filter(Experiment.Title == title).first()
+        p = db.session.query(Experiment).filter(Experiment.title == title).first()
         if p and (p != self):
             raise Exception("Title must be unique.")
         self.title = title
@@ -102,7 +102,7 @@ class Experiment(BaseEntity):
                 raise Exception("Processing IDs should be list of integers.")
             if Processing.get(i, None) is None:
                 raise Exception("Processing with id={} does not exist.".format(i))
-        self.processing_ids = " ".join(str(s) for s in arr)
+        self.processing_ids = "-" + "-".join(str(s) for s in arr) + "-"
 
     def set_baseline(self, num):
         current_app.logger.info("Baseline = " + str(num))
@@ -132,7 +132,7 @@ class Experiment(BaseEntity):
 
     def update(self, title, short_title, comment, processing_arr,
                baseline, format_id, format_name, dataset_id, dataset_title):
-        if self.Title != title:
+        if self.title != title:
             self.set_title(title)
         if short_title:
             self.set_short_title(short_title)
@@ -151,7 +151,8 @@ class Experiment(BaseEntity):
         return DataSet.get(self.dataset, None)
 
     def get_processing_ids(self):
-        return [int(s) for s in self.processing_ids.split(' ')]
+        # return [int(s) for s in self.processing_ids.split(' ')]
+        return [int(s) for s in filter(lambda x: x != '', self.processing_ids.split('-'))]
 
     def get_processing(self):
         arr = self.get_processing_ids()
@@ -188,8 +189,9 @@ class Experiment(BaseEntity):
         return d
 
     def run(self, delayed, args, user):
-        from model_testing.workers import retrieve_ids, chain_status, finalize_exp, verify_input
+        from model_testing.workers import retrieve_ids, chain_status, finalize_exp, verify_input, await_previous
         from model_testing.model.exp_execution import ExpExecution
+        from celery import signature
 
         launch_time = None
 
@@ -211,6 +213,10 @@ class Experiment(BaseEntity):
         res_f = self.get_result_format()
 
         exp_exe = ExpExecution.create(self, user)
+
+        prev_id = ExpExecution.get_last_id()
+        current_app.logger.info(str(prev_id))
+
         db.session.add(exp_exe)
         db.session.commit()
 
@@ -219,7 +225,8 @@ class Experiment(BaseEntity):
         schema = res_f.schema
         format_name = res_f.format.value
 
-        chain_items = ds.get_chain_items(exe_id)
+        # chain_items = [prev_sign] if prev_sign else []
+        chain_items = [await_previous.si(prev_id)] + ds.get_chain_items(exe_id)
 
         for i in range(len(procs)):
             proc = procs[i]
@@ -228,9 +235,7 @@ class Experiment(BaseEntity):
         chain_items = chain_items + [verify_input.si(exe_id, schema, format_name),
                                      finalize_exp.si(exe_id, ADMIN_NAME, ADMIN_PASS)]
 
-        from celery import signature
-
-        ch = chain(chain_items).apply_async(eta=launch_time, acks_late = True)
+        ch = chain(chain_items).apply_async(eta=launch_time, add_to_parent=True)#, acks_late = True, queue='A')
 
         ids = retrieve_ids(ch)
         task_names = [signature(s)['task'] for s in chain_items]
@@ -241,4 +246,3 @@ class Experiment(BaseEntity):
         db.session.commit()
 
         return exp_exe.to_dict()
-

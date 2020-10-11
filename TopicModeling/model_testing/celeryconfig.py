@@ -8,3 +8,4 @@ accept_content = ['json', 'pickle']
 task_track_started = True
 result_expires = None
 enable_utc = True
+worker_concurrency = 1

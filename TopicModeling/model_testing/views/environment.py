@@ -154,12 +154,14 @@ def del_environment():
             try:
                 env = Environment.get(env_id, name)
 
-                env_id = env.Id
+                env_id = env.id
                 name = env.name
 
-                db.session.delete(env)
-                db.session.commit()
-                res.append(env.to_dict())
+                message = Environment.delete(env)
+                # db.session.delete(env)
+                # db.session.commit()
+                # message = env.to_dict()
+                res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
                 if env_id:

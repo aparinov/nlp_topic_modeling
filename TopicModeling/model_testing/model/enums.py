@@ -4,18 +4,12 @@ import enum
 class DataFormats(enum.Enum):
     json = 'json'
     xml = 'xml'
-    plain = 'plain text'
+    plain = 'plain'
     binary = 'binary'
-    db = 'database'
+    database = 'database'
 
 
-class OSs(enum.Enum):
-    win = 'Win'
-    linux = 'Linux'
-    mac = 'MacOS'
-
-
-class Langs(enum.Enum):
+class Language(enum.Enum):
     python = 'python'
     exe = 'exe'
 

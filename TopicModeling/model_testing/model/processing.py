@@ -9,7 +9,7 @@ import subprocess
 from model_testing import db
 from model_testing.model.base_entity import BaseEntity
 from model_testing.model.data_format import DataFormat
-from model_testing.model.enums import Langs, ProgramStatus
+from model_testing.model.enums import Language, ProgramStatus
 from base64 import b64decode, b64encode
 from model_testing.workers import run, verify_input, verify_output, transfer_output_to_input
 from model_testing.model.environment import Environment
@@ -28,7 +28,7 @@ class Processing(BaseEntity):
     environment = Column(Integer, ForeignKey('environment.id'))
 
     source = Column(LargeBinary())
-    lang = Column(Enum(Langs))
+    lang = Column(Enum(Language))
     status = Column(Enum(ProgramStatus))
 
     args_info = Column(String(None), default="")
@@ -104,10 +104,10 @@ class Processing(BaseEntity):
             raise Exception("Language not provided.")
         if type(lang_name) is not str:
             raise Exception("Language must be provided with string.")
-        allowed = [x.value for x in Langs]
+        allowed = [x.value for x in Language]
         if not lang_name in allowed:
             raise Exception("Language not supported. Languages available: {}".format(allowed))
-        self.lang = Langs[lang_name]
+        self.lang = Language[lang_name]
 
     def set_status(self, status_name):
         if status_name is None:
@@ -130,24 +130,26 @@ class Processing(BaseEntity):
             file.write(self.source)
         os.chmod(path, 0b111101101)
 
-        if self.lang == Langs.python:
+        command = None
+
+        if self.lang == Language.python:
             command = ['python3', path, '--help']
-        else:
+        elif self.lang == Language.exe:
             command = [path, '--help']
 
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        out, err = process.communicate()
+        if command:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE)
+            out, err = process.communicate()
 
-        if os.path.isfile(path):
-            os.remove(path)
+            if os.path.isfile(path):
+                os.remove(path)
 
-        if err:
-            raise Exception("Provided code throw error when trying to get '--help' through the command line.")
-        if not out:
-            raise Exception("Provided code gives no information when trying to get '--help' through the command line.")
+            if err:
+                raise Exception("Provided code throw error when trying to get '--help' through the command line.")
+            if not out:
+                raise Exception("Provided code gives no information when trying to get '--help' through the command line.")
 
-        self.args_info = out.decode('utf-8')
-
+            self.args_info = out.decode('utf-8')
 
     def get_input(self):
         return db.session.query(DataFormat).filter(DataFormat.id == self.input).first()

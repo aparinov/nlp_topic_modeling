@@ -87,11 +87,11 @@ class DataSet(BaseEntity):
         if self.data is None:
             raise Exception("Data not provided.")
 
-        df = DataFormat.get(self.DataFormat, None)
+        df = DataFormat.get(self.data_format, None)
         if df is None:
             raise DataFormat("Data Format not available.")
 
-        instance = self.Data.decode("utf-8")
+        instance = self.data.decode("utf-8")
         format = df.format
         format_name = df.name
         schema = df.schema
@@ -116,9 +116,9 @@ class DataSet(BaseEntity):
         self.validate()
 
     def to_dict(self):
-        df = DataFormat.get(self.DataFormat, None)
+        df = DataFormat.get(self.data_format, None)
         d = super().to_dict()
-        d["data"] = self.Data.decode("utf-8")
+        d["data"] = self.data.decode("utf-8")
         d["dataset_id"] = self.id
         d["title"] = self.title
         d["format_name"] = df.name
@@ -126,7 +126,7 @@ class DataSet(BaseEntity):
         return d
 
     def to_dict_light(self):
-        df = DataFormat.get(self.DataFormat, None)
+        df = DataFormat.get(self.data_format, None)
         d = super().to_dict()
         d["dataset_id"] = self.id
         d["title"] = self.title
@@ -135,5 +135,5 @@ class DataSet(BaseEntity):
         return d
 
     def get_chain_items(self, exe_id):
-        data = self.Data.decode('utf-8')
+        data = self.data.decode('utf-8')
         return [clean.si(exe_id), prepare_input.si(exe_id, data)]

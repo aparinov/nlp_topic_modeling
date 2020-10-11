@@ -1,10 +1,8 @@
-from config import Config
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g, current_app
+from model_testing.config import Config
+from flask import Flask, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPBasicAuth
 import logging
-from model_testing.model.user import User
-
 
 from celery import Celery
 
@@ -48,7 +46,7 @@ def create_app(config=Config):
     db.init_app(app)
     logging.basicConfig(level=logging.DEBUG)
 
-    from model_testing.model.enums import Langs, OSs, DataFormats
+    from model_testing.model.enums import Language, DataFormats
     from model_testing.model.base_entity import BaseEntity
     from model_testing.model.user import User
     from model_testing.model.data_format import DataFormat
@@ -81,6 +79,10 @@ def create_app(config=Config):
     init_celery(app, celery)
 
     return app
+
+
+# from model_testing.database import User
+from model_testing.model.user import User
 
 
 @auth.verify_password

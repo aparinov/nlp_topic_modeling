@@ -20,7 +20,7 @@ class DataFormat(BaseEntity):
     __mapper_args__ = {'polymorphic_identity': 'format'}
 
     @staticmethod
-    def create(name, format_name, uri, author):#, session):
+    def create(name, format_name, uri, author):
         df = DataFormat()
         df.set_name(name)
         df.set_format(format_name)

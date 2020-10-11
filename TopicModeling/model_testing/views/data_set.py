@@ -24,20 +24,20 @@ def get_all_dataset():
 def get_dataset():
     to_get = request.json.get('to_get')
     res = {"response": []}
-    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'id' or 'name'."}
+    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'dataset_id' or 'name'."}
     if to_get:
         for g in to_get:
             name = from_dict(g, 'name')
-            id = from_dict(g, 'id')
+            dataset_id = from_dict(g, 'dataset_id')
 
-            if (id is not None) or (name is not None):
+            if (dataset_id is not None) or (name is not None):
                 try:
-                    ds = DataSet.get(id, name)
+                    ds = DataSet.get(dataset_id, name)
                     res["response"].append(ds.to_dict())
                 except Exception as e:
                     err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
+                    if dataset_id:
+                        err['dataset_id'] = dataset_id
                     if name:
                         err['name'] = name
                     res["response"].append(err)
@@ -137,9 +137,12 @@ def del_dataset():
                 dataset_id = ds.Id
                 title = ds.Title
 
-                db.session.delete(ds)
-                db.session.commit()
-                res.append(ds.to_dict_light())
+                message = DataSet.delete(ds)
+                # db.session.delete(ds)
+                # db.session.commit()
+                # message = ds.to_dict_light()
+
+                res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
                 if dataset_id:

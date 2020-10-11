@@ -168,10 +168,11 @@ def del_processing():
 
             try:
                 p = Processing.get(processing_id, name)
-                message = p.to_dict()
-
-                db.session.delete(p)
-                db.session.commit()
+                message = Processing.delete(p)
+                # message = p.to_dict()
+                #
+                # db.session.delete(p)
+                # db.session.commit()
 
                 res.append(message)
             except Exception as e:

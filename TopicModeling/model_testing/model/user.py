@@ -1,4 +1,4 @@
-from model_testing import db
+from model_testing import db, auth
 
 from passlib.apps import custom_app_context
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
@@ -62,6 +62,29 @@ class User(db.Model):
                 return us[0]
             else:
                 raise Exception(err)
+
+    @staticmethod
+    def delete(user):
+        from model_testing.model.base_entity import BaseEntity
+
+        if user is None:
+            return None
+        user = db.session.query(User).filter(User.id == user.id).first()
+        if not user:
+            return None
+
+        res = { "user_id": user.id }
+        dependent = db.session.query(BaseEntity).filter(BaseEntity.author == user.id).all()
+        if dependent:
+            res["dependent"] = []
+            for dep in dependent:
+                dep_res = BaseEntity.delete(dep)
+                if dep_res:
+                    res["dependent"].append(dep_res)
+
+        db.session.delete(user)
+        db.session.commit()
+        return res
 
     def set_username(self, username):
         if not username:

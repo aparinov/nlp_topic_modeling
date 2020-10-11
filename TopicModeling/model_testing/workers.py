@@ -39,6 +39,7 @@ def finalize_exp(exe_id, username, password):
         post(url, auth=auth, json=data)
         if os.path.isfile(path):
             os.remove(path)
+        return None
     except Exception as e:
         report_failure(exe_id, e)
 
@@ -130,6 +131,18 @@ def install_package(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 
+@celery_app.task(bind=True, name="await_previous", max_retries=None)
+def await_previous(self, prev_id):
+    print(prev_id)
+    if prev_id:
+        allowed = ['SUCCESS','FAILURE', 'RETRY', 'REVOKED']
+        res = AsyncResult(prev_id)
+        print(res.state in allowed)
+        if res.state not in allowed:
+            raise self.retry(prev_id=prev_id, countdown=60)
+    print(prev_id)
+
+
 @celery_app.task(name="run_stage")
 def run(exe_id, code="", lang_name="python", py_dependencies=None, args=""):
     try:
@@ -194,8 +207,8 @@ def retrieve_ids(chain):
 
 def chain_status(ids, names):
     status = {}
-    i = len(names) + 1
-    for id, name in zip(ids, names):
+    i = len(names)
+    for id, name in zip(ids, reversed(names)):
         res = AsyncResult(id, app=celery_app)
         status[str(i)] = {
             "id": id,

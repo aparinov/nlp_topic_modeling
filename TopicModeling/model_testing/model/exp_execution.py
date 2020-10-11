@@ -38,6 +38,15 @@ class ExpExecution(BaseEntity):
                 return exe
         raise Exception("No such Experiment Execution.")
 
+    @staticmethod
+    def get_last_id():
+        exe = db.session.query(ExpExecution).filter(ExpExecution.status == ExecutionStatus.started)\
+            .order_by(ExpExecution.time_created.desc()).first()
+        if exe:
+            return exe.monitoring_ids.split(' ')[0]
+        return None
+
+
     def set_ids(self, arr):
         # arr must be list of ints
         if arr:

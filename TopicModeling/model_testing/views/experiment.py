@@ -68,7 +68,7 @@ def get_experiment_by_user():
             try:
                 user = User.get(user_id, username)
                 user_id = user.id
-                exps = db.session.query(Experiment).filter(Experiment.Author == user_id).all()
+                exps = db.session.query(Experiment).filter(Experiment.author == user_id).all()
                 local_res = {
                     "user": user.to_dict(),
                     "experiments": []
@@ -111,7 +111,6 @@ def upd_experiment():
             dataset_id = from_dict(u, 'new_dataset_id')
             dataset_title = from_dict(u, 'new_dataset_title')
 
-            # title, short_title, comment, stages_arr, baseline, format_id, format_name, dataset_id, dataset_title
             try:
                 exp = Experiment.get(exp_id, title)
                 exp.update(new_title, short_title, comment, processing_arr, baseline, res_format_id, res_format_name,
@@ -125,7 +124,6 @@ def upd_experiment():
                 if title:
                     err['title'] = title
                 res.append(err)
-    #
     else:
         res.append({"error": "Request must provide list 'to_update' of objects with 'exp_id' or 'title' "
                              "and data to update ('new_title', 'new_short_title', 'new_comment', 'new_baseline', "
@@ -195,10 +193,11 @@ def del_experiment():
 
             try:
                 exp = Experiment.get(id, title)
-                message = exp.to_dict()
-
-                db.session.delete(exp)
-                db.session.commit()
+                message = Experiment.delete(exp)
+                # message = exp.to_dict()
+                #
+                # db.session.delete(exp)
+                # db.session.commit()
 
                 res.append(message)
             except Exception as e:

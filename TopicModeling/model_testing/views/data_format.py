@@ -22,20 +22,20 @@ def get_all_dataformat():
 def get_dataformat():
     to_get = request.json.get('to_get')
     res = {"response": []}
-    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'id' or 'name'."}
+    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'dataformat_id' or 'name'."}
     if to_get:
         for g in to_get:
-            name = g['name'] if 'name' in g.keys() else None
-            id = g['id'] if 'id' in g.keys() else None
+            name = from_dict(g, 'name')
+            dataformat_id = from_dict(g, 'dataformat_id')
 
-            if (id is not None) or (name is not None):
+            if (dataformat_id is not None) or (name is not None):
                 try:
-                    df = DataFormat.get(id, name)
+                    df = DataFormat.get(dataformat_id, name)
                     res["response"].append(df.to_dict())
                 except Exception as e:
                     err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
+                    if dataformat_id:
+                        err['dataformat_id'] = dataformat_id
                     if name:
                         err['name'] = name
                     res["response"].append(err)
@@ -65,7 +65,7 @@ def upd_dataformat():
 
                 df.update(new_name, new_format, new_schema_uri)
 
-                dataformat_id = df.Id
+                dataformat_id = df.id
                 name = df.name
 
                 db.session.commit()
@@ -130,12 +130,14 @@ def del_dataformat():
             try:
                 df = DataFormat.get(dataformat_id, name)
 
-                dataformat_id = df.Id
+                dataformat_id = df.id
                 name = df.name
+                message = DataFormat.delete(df)
 
-                db.session.delete(df)
-                db.session.commit()
-                res.append(df.to_dict())
+                # db.session.delete(df)
+                # db.session.commit()
+                # message = df.to_dict()
+                res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
                 if dataformat_id:
