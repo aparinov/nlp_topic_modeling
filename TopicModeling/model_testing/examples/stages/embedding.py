@@ -1,9 +1,9 @@
-from transformers import RobertaTokenizer, TFRobertaModel
+from transformers import TFRobertaModel
 import numpy as np
 import tensorflow as tf
 import os
 import json
-
+import argparse
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if len(gpus) != 0:
@@ -118,6 +118,10 @@ def test(inputs, model, chunk_size=10):
 
     return tf.concat(res, 0, name='concat')
 
+
+parser = argparse.ArgumentParser(conflict_handler='resolve', description='Tokenized text embedding using RoBERTa model.'
+                                                                         ' No options.')
+args = parser.parse_args()
 
 data_path = os.getcwd() + '/model_testing/data'
 

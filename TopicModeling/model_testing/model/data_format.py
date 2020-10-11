@@ -1,22 +1,10 @@
-from model_testing import db, auth
+from model_testing import db
+import urllib.request
 
-from passlib.apps import custom_app_context
-from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-from flask import current_app
-
-import sqlalchemy
-from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Enum
 from sqlalchemy import BIGINT, NVARCHAR, TIMESTAMP, ForeignKey, FLOAT, BLOB, LargeBinary
-from sqlalchemy.orm import sessionmaker
 
-import datetime
-# from schemas import tm_dataset_schema, tm_dataset_xsd
-from urllib.parse import urlparse
-import urllib.request
-from schemas import validate_json, validate_xml
 from model_testing.model.base_entity import BaseEntity
 from model_testing.model.enums import DataFormats
 
@@ -24,7 +12,7 @@ from model_testing.model.enums import DataFormats
 class DataFormat(BaseEntity):
     __tablename__ = 'formats'
 
-    FormatId = Column('Id', BIGINT, ForeignKey('base_entity.Id'), primary_key=True)
+    dataformat_id = Column('id', BIGINT, ForeignKey('base_entity.id'), primary_key=True)
     format = Column(Enum(DataFormats))
     schema = Column(String(None))
     name = Column(String(None), default="")
@@ -41,31 +29,27 @@ class DataFormat(BaseEntity):
         return df
 
     @staticmethod
-    def get(id, name):
+    def get(dataformat_id, name):
         # TODO: Test
-        err = "The request must provide 'id' or 'name' of the sole Data Format record."
+        err = "The request must provide 'dataformat_id' or 'name' of the sole Data Format record."
         df = []
         if name:
             df.append(db.session.query(DataFormat).filter(DataFormat.name == name).first())
-
-        if id:
-            df.append(db.session.query(DataFormat).filter(DataFormat.Id == id).first())
-
+        if dataformat_id:
+            df.append(db.session.query(DataFormat).filter(DataFormat.id == dataformat_id).first())
+        df = list(filter(lambda x: x is not None, df))
         if len(df) == 0:
             raise Exception("No such Data Format.")
         elif len(df) == 1:
-            if df[0]:
-                return df[0]
-            else:
-                raise Exception(err)
+            return df[0]
         else:
             if df[0] == df[1]:
-                return df[1]
+                return df[0]
             else:
                 raise Exception(err)
 
     def set_name(self, name):
-        if not name:
+        if name is None:
             raise Exception("Name not provided.")
         if type(name) is not str:
             raise Exception("Name must be string.")
@@ -75,7 +59,7 @@ class DataFormat(BaseEntity):
         self.name = name
 
     def set_format(self, format_name):
-        if not format_name:
+        if format_name is None:
             raise Exception("Format not provided.")
         if type(format_name) is not str:
             raise Exception("Format must be string.")
@@ -101,13 +85,9 @@ class DataFormat(BaseEntity):
             self.set_schema(schema_uri)
 
     def to_dict(self):
-        author = self.get_author()
-        df = {
-            "id" : self.Id,
-            "name" : self.name,
-            "schema" : self.schema,
-            "format" : self.format.value,
-            "author_username" : author.username,
-            "author_id" : author.id
-        }
-        return df
+        d = super().to_dict()
+        d["dataformat_id"] = self.id
+        d["name"] = self.name
+        d["schema"] = self.schema
+        d["format"] = self.format.value
+        return d

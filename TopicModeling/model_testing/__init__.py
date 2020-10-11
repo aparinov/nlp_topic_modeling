@@ -3,11 +3,8 @@ from flask import Flask, request, abort, jsonify, url_for, Blueprint, g, current
 from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPBasicAuth
 import logging
-import os
+from model_testing.model.user import User
 
-# from passlib.apps import custom_app_context
-# from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-# from celery_tasks import run_stage
 
 from celery import Celery
 
@@ -42,8 +39,6 @@ def init_celery(app, celery):
             with app.app_context():
                 return TaskBase.__call__(self, *args, **kwargs)
     celery.Task = ContextTask
-    # with app.app_context():
-    #     celery.start()
 
 
 def create_app(config=Config):
@@ -53,7 +48,7 @@ def create_app(config=Config):
     db.init_app(app)
     logging.basicConfig(level=logging.DEBUG)
 
-    from model_testing.model.enums import Langs, OSs, ImplStatus, DataFormats
+    from model_testing.model.enums import Langs, OSs, DataFormats
     from model_testing.model.base_entity import BaseEntity
     from model_testing.model.user import User
     from model_testing.model.data_format import DataFormat
@@ -86,10 +81,6 @@ def create_app(config=Config):
     init_celery(app, celery)
 
     return app
-
-
-# from model_testing.database import User
-from model_testing.model.user import User
 
 
 @auth.verify_password

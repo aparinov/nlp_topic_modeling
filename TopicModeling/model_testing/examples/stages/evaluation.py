@@ -1,6 +1,7 @@
 from sklearn.cluster import KMeans
 
 import numpy as np
+import argparse
 
 from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
@@ -47,6 +48,10 @@ def strings2embedded(strings):
     return tf.stack(embedded, axis=0, name='stack')
 
 
+parser = argparse.ArgumentParser(conflict_handler='resolve', description='Evaluation of clustering for given embedding.'
+                                                                         ' No options.')
+args = parser.parse_args()
+
 data_path = os.getcwd() + '/model_testing/data'
 
 inp_filename = data_path + "/input/data.txt"
@@ -88,7 +93,7 @@ for label in set(labels):
         "cluster_ids": []
     }
     for i in range(num):
-        if (labels[i] == label):
+        if labels[i] == label:
             cluster["cluster_ids"].append(data_names[i])
     result["clusters"].append(cluster)
 

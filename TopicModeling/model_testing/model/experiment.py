@@ -1,70 +1,57 @@
-from model_testing import db, auth
-
-from passlib.apps import custom_app_context
-from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 from flask import current_app
+from celery import chain
 
-import sqlalchemy
-from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Enum
 from sqlalchemy import BIGINT, NVARCHAR, TIMESTAMP, ForeignKey, FLOAT, BLOB, LargeBinary
-from sqlalchemy.orm import sessionmaker
 
 from datetime import datetime
-# from schemas import tm_dataset_schema, tm_dataset_xsd
-from urllib.parse import urlparse
-import urllib.request
-from schemas import validate_json, validate_xml
 from model_testing.model.base_entity import BaseEntity
 from model_testing.model.data_format import DataFormat
 from model_testing.model.data_set import DataSet
 from model_testing.model.processing import Processing
-from model_testing.model.enums import Langs
-from celery import chain
+from model_testing import db
 from model_testing.config import ADMIN_NAME, ADMIN_PASS
-
-
 
 
 class Experiment(BaseEntity):
     # TODO: test
     __tablename__ = 'experiment'
 
-    ExperimentId = Column('Id', Integer, ForeignKey('base_entity.Id'), primary_key=True)
+    experiment_id = Column('id', Integer, ForeignKey('base_entity.id'), primary_key=True)
 
     __mapper_args__ = {'polymorphic_identity': 'experiment'}
 
-    Title = Column(String(None), default="")
-    ShortTitle = Column(String(None), default="")
+    title = Column(String(None), default="")
+    short_title = Column(String(None), default="")
 
-    Comment = Column(String(None), default="")
+    comment = Column(String(None), default="")
 
-    ProcessingIDs = Column(String(None), default="")
+    processing_ids = Column(String(None), default="")
 
-    Baseline = Column(Integer, default=0)
+    baseline = Column(Integer, default=0)
 
-    ResultFormat = Column(Integer, ForeignKey('formats.Id'))
-    Dataset = Column(Integer, ForeignKey('datasets.Id'))
+    result_format = Column(Integer, ForeignKey('formats.id'))
+    dataset = Column(Integer, ForeignKey('datasets.id'))
 
     @staticmethod
-    def get(id, title):
-        p = []
+    def get(exp_id, title):
+        exp = []
         if title:
-            p.append(db.session.query(Experiment).filter(Experiment.Title == title).first())
-        elif id:
-            p.append(db.session.query(Experiment).filter(Experiment.Id == id).first())
+            exp.append(db.session.query(Experiment).filter(Experiment.title == title).first())
+        if exp_id:
+            exp.append(db.session.query(Experiment).filter(Experiment.id == exp_id).first())
 
-        if len(p) == 0:
+        exp = list(filter(lambda x: x is not None, exp))
+
+        if len(exp) == 0:
             raise Exception("No such Experiment.")
-        elif len(p) == 1:
-            return p[0]
+        elif len(exp) == 1:
+            return exp[0]
         else:
-            if (p[0] == p[1]):
-                return p[1]
+            if exp[0] == exp[1]:
+                return exp[0]
             else:
-                raise Exception("The request must provide 'id' or 'title' of the sole Experiment record.")
+                raise Exception("The request must provide 'exp_id' or 'title' of the sole Experiment record.")
 
     @staticmethod
     def create(title, short_title, comment, processing_arr, baseline, res_id, res_name, dataset_id, dataset_title, author):
@@ -87,24 +74,24 @@ class Experiment(BaseEntity):
         p = db.session.query(Experiment).filter(Experiment.Title == title).first()
         if p and (p != self):
             raise Exception("Title must be unique.")
-        self.Title = title
+        self.title = title
 
     def set_short_title(self, title):
-        if not title:
+        if title is None:
             raise Exception("Short Title not provided.")
         if type(title) is not str:
             raise Exception("Short Title must be string.")
-        self.ShortTitle = title
+        self.short_title = title
 
     def set_comment(self, comment):
-        if not comment:
+        if comment is None:
             raise Exception("Comment not provided.")
         if type(comment) is not str:
             raise Exception("Comment must be string.")
-        self.Comment = comment
+        self.comment = comment
 
     def set_processing(self, arr):
-        if not arr:
+        if arr is None:
             raise Exception("Processing IDs not provided.")
         if type(arr) != list:
             raise Exception("Processing IDs should be list of integers.")
@@ -113,9 +100,9 @@ class Experiment(BaseEntity):
         for i in arr:
             if type(i) != int:
                 raise Exception("Processing IDs should be list of integers.")
-            if not Processing.get(i, None):
+            if Processing.get(i, None) is None:
                 raise Exception("Processing with id={} does not exist.".format(i))
-        self.ProcessingIDs = " ".join(str(s) for s in arr)
+        self.processing_ids = " ".join(str(s) for s in arr)
 
     def set_baseline(self, num):
         current_app.logger.info("Baseline = " + str(num))
@@ -123,26 +110,25 @@ class Experiment(BaseEntity):
             raise Exception("Baseline not provided.")
         if type(num) != float:
             raise Exception("Baseline should be floating point number.")
-        self.Baseline = num
+        self.baseline = num
 
-    def set_result_format(self, id, name):
+    def set_result_format(self, dataformat_id, name):
         df = None
         try:
-            df = DataFormat.get(id, name)
+            df = DataFormat.get(dataformat_id, name)
         except:
             raise Exception("No valid Result Format provided! "
                             "You must provide 'result_format_id' or 'result_format_name'.")
-        self.ResultFormat = df.Id
+        self.result_format = df.id
 
-
-    def set_dataset(self, id, name):
+    def set_dataset(self, dataset_id, name):
         ds = None
         try:
-            ds = DataSet.get(id, name)
+            ds = DataSet.get(dataset_id, name)
         except:
             raise Exception("No valid DataSet provided! "
-                            "You must provide 'result_format_id' or 'result_format_name'.")
-        self.Dataset = ds.Id
+                            "You must provide 'dataset_id' or 'dataset_title'.")
+        self.dataset = ds.id
 
     def update(self, title, short_title, comment, processing_arr,
                baseline, format_id, format_name, dataset_id, dataset_title):
@@ -162,48 +148,44 @@ class Experiment(BaseEntity):
             self.set_dataset(dataset_id, dataset_title)
 
     def get_dataset(self):
-        return DataSet.get(self.Dataset, None)
+        return DataSet.get(self.dataset, None)
 
     def get_processing_ids(self):
-        return [int(s) for s in self.ProcessingIDs.split(' ')]
+        return [int(s) for s in self.processing_ids.split(' ')]
 
     def get_processing(self):
         arr = self.get_processing_ids()
         for i in arr:
-            if not Processing.get(i, None):
-                raise Exception("Stage with id={} does not exist. Please update ProcessingIDs of '' experiment.".format(i, self.Title))
+            if Processing.get(i, None) is None:
+                raise Exception("Stage with id={} does not exist. "
+                                "Please update ProcessingIDs of '' experiment.".format(i, self.title))
         return [Processing.get(i, None) for i in arr]
 
     def get_result_format(self):
-        return DataFormat.get(self.ResultFormat, None)
-
-    # Title, ShortTitle, Comment, ProcessingIDs, Baseline, ResultFormat, Dataset
+        return DataFormat.get(self.result_format, None)
 
     def to_dict(self):
-        author = self.get_author()
-        res = {
-            "id": self.Id,
-            "title": self.Title,
-            "short_title": self.ShortTitle,
-            "comment": self.Comment,
-            "baseline": self.Baseline,
-            "author_username" : author.username,
-            "author_id" : author.id
-        }
-
+        d = super().to_dict()
+        d["exp_id"] = self.id
+        d["title"] = self.title
+        d["short_title"] = self.short_title
+        d["comment"] = self.comment
+        d["baseline"] = self.baseline
         f = self.get_result_format()
         if f:
-            res["result_format_name"] = f.name
+            d["result_format_name"] = f.name
         else:
-            res["result_format_name"] = None
-
+            d["result_format_name"] = None
         ds = self.get_dataset()
         if ds:
-            res["dataset_title"] = ds.Title
+            d["dataset_title"] = ds.title
         else:
-            res["dataset_title"] = None
-
-        return res
+            d["dataset_title"] = None
+        processing = self.get_processing()
+        d["processing"] = []
+        for p in processing:
+            d['processing'].append(p.to_dict())
+        return d
 
     def run(self, delayed, args, user):
         from model_testing.workers import retrieve_ids, chain_status, finalize_exp, verify_input
@@ -217,13 +199,14 @@ class Experiment(BaseEntity):
             else:
                 raise Exception("The time of delayed task start should be a string in the format: "
                                 "'Year-Month-Day Hour:Minute:Second (float)'")
+
         ds = self.get_dataset()
         procs = self.get_processing()
 
         if args is None:
             args = ["" for p in procs]
         if len(procs) != len(args):
-            raise Exception("{} args provided for {} processing stages.".format(len(args) ,len(procs)))
+            raise Exception("{} args provided for {} processing stages.".format(len(args), len(procs)))
 
         res_f = self.get_result_format()
 
@@ -231,19 +214,19 @@ class Experiment(BaseEntity):
         db.session.add(exp_exe)
         db.session.commit()
 
-        exe_id = exp_exe.Id
+        exe_id = exp_exe.id
 
         schema = res_f.schema
         format_name = res_f.format.value
 
         chain_items = ds.get_chain_items(exe_id)
 
-        # for proc in procs:
         for i in range(len(procs)):
             proc = procs[i]
             arg = args[i]
             chain_items = chain_items + proc.get_chain_items(exe_id, arg)
-        chain_items = chain_items + [verify_input.si(exe_id, schema, format_name), finalize_exp.si(exe_id, ADMIN_NAME, ADMIN_PASS)]
+        chain_items = chain_items + [verify_input.si(exe_id, schema, format_name),
+                                     finalize_exp.si(exe_id, ADMIN_NAME, ADMIN_PASS)]
 
         from celery import signature
 

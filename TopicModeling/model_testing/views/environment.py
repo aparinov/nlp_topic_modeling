@@ -1,12 +1,10 @@
 from model_testing import db, auth
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from database import session as s
-# from model_testing.database import DataFormat
+from flask import request, jsonify, Blueprint, g
 from model_testing.model.environment import Environment
-from model_testing.model.data_set import DataSet
 from model_testing import from_dict
 
-from model_testing.model.environment import get_cuda_version, get_free_ram, get_free_vram, get_gpus, get_packages
+from model_testing.model.environment import get_cuda_version, \
+    get_free_ram, get_free_vram, get_gpus, get_packages, get_architecture
 
 
 environment = Blueprint("environment" , __name__)
@@ -20,7 +18,8 @@ def get_node_environment():
         "free_vram_gb" : get_free_vram(),
         "py_packages" : get_packages(),
         "gpus" : get_gpus(),
-        "cuda_version" : get_cuda_version()
+        "cuda_version" : get_cuda_version(),
+        "architecture" : get_architecture()
     }
     return jsonify(res)
 
@@ -40,20 +39,20 @@ def get_all_environment():
 def get_environment():
     to_get = request.json.get('to_get')
     res = {"response": []}
-    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'id' or 'name'."}
+    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'env_id' or 'name'."}
     if to_get:
         for g in to_get:
-            name = g['name'] if 'name' in g.keys() else None
-            id = g['id'] if 'id' in g.keys() else None
+            name = from_dict(g, 'name')
+            env_id = from_dict(g, 'env_id')
 
-            if (id is not None) or (name is not None):
+            if (env_id is not None) or (name is not None):
                 try:
-                    df = Environment.get(id, name)
+                    df = Environment.get(env_id, name)
                     res["response"].append(df.to_dict())
                 except Exception as e:
                     err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
+                    if env_id:
+                        err['env_id'] = env_id
                     if name:
                         err['name'] = name
                     res["response"].append(err)
@@ -74,19 +73,20 @@ def upd_environment():
     if to_update:
         for u in to_update:
             name = from_dict(u, 'name')
-            id = from_dict(u, 'id')
+            env_id = from_dict(u, 'env_id')
 
             new_name = from_dict(u, 'new_name')
             new_cuda_version = from_dict(u, 'new_cuda_version')
             new_gpu_required = from_dict(u, 'new_gpu_required')
             new_py_dependencies = from_dict(u, 'new_py_dependencies')
+            new_architecture = from_dict(u, 'new_architecture')
 
             try:
-                env = Environment.get(id, name)
+                env = Environment.get(env_id, name)
 
-                env.update(new_name, new_cuda_version, new_gpu_required, new_py_dependencies)
+                env.update(new_name, new_cuda_version, new_gpu_required, new_py_dependencies, new_architecture)
 
-                id = env.Id
+                env_id = env.Id
                 name = env.name
 
                 db.session.commit()
@@ -94,16 +94,16 @@ def upd_environment():
 
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if env_id:
+                    err['env_id'] = env_id
                 if name:
                     err['name'] = name
                 res.append(err)
 
     else:
-        res.append({"error": "Request must provide list 'to_update' of objects with 'id' or 'name' "
+        res.append({"error": "Request must provide list 'to_update' of objects with 'env_id' or 'name' "
                              "and data to update ('new_name', 'new_cuda_version', 'new_gpu_required',"
-                             " 'new_py_dependencies')."})
+                             " 'new_architecture', 'new_py_dependencies')."})
 
     return jsonify({"updated": res})
 
@@ -120,9 +120,10 @@ def post_environment():
             cuda_version = from_dict(p, 'cuda_version')
             gpu_required = from_dict(p, 'gpu_required')
             py_dependencies = from_dict(p, 'py_dependencies')
+            architecture = from_dict(p, 'architecture')
 
             try:
-                env = Environment.create(name, cuda_version, gpu_required, py_dependencies, g.user)
+                env = Environment.create(name, cuda_version, gpu_required, py_dependencies, architecture, g.user)
                 db.session.add(env)
                 db.session.commit()
                 res.append(env.to_dict())
@@ -134,7 +135,7 @@ def post_environment():
 
     else:
         res.append({"error": "Request must provide list 'to_post' of objects"
-                             " with 'name', 'cuda_version', 'gpu_required' and 'py_dependencies'."})
+                             " with 'name', 'cuda_version', 'gpu_required', 'architecture' and 'py_dependencies'."})
 
     return jsonify({"posted": res})
 
@@ -148,12 +149,12 @@ def del_environment():
     if to_delete:
         for d in to_delete:
             name = from_dict(d, 'name')
-            id = from_dict(d, 'id')
+            env_id = from_dict(d, 'env_id')
 
             try:
-                env = Environment.get(id, name)
+                env = Environment.get(env_id, name)
 
-                id = env.Id
+                env_id = env.Id
                 name = env.name
 
                 db.session.delete(env)
@@ -161,13 +162,13 @@ def del_environment():
                 res.append(env.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if env_id:
+                    err['env_id'] = env_id
                 if name:
                     err['name'] = name
                 res.append(err)
 
     else:
-        res.append({"error": "Request must provide list 'to_delete' of objects with 'id' or 'name'."})
+        res.append({"error": "Request must provide list 'to_delete' of objects with 'env_id' or 'name'."})
 
     return jsonify({"deleted": res})

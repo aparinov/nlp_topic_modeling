@@ -1,15 +1,10 @@
 from model_testing import db, auth
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from model_testing.database import DataSet, DataFormat
-from model_testing.model.data_format import DataFormat
-from model_testing.model.data_set import DataSet
-from model_testing.model.processing import Processing
+from flask import request, jsonify, Blueprint, g
 from model_testing.model.experiment import Experiment
 from model_testing.model.exp_execution import ExpExecution
 from model_testing import from_dict
-from model_testing.model.enums import ExecutionStatus
-from model_testing.model.exp_result import ExpResult
 from model_testing.model.user import User
+
 
 experiment = Blueprint("experiment" , __name__)
 
@@ -33,20 +28,20 @@ def get_experiment():
 
     res = {"response": []}
 
-    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'id' or 'title'."}
+    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'exp_id' or 'title'."}
     if to_get:
         for g in to_get:
-            title = g['title'] if 'title' in g.keys() else None
-            id = g['id'] if 'id' in g.keys() else None
+            title = from_dict(g, 'title')
+            exp_id = from_dict(g, 'exp_id')
 
-            if (id is not None) or (title is not None):
+            if (exp_id is not None) or (title is not None):
                 try:
-                    exp = Experiment.get(id, title)
+                    exp = Experiment.get(exp_id, title)
                     res["response"].append(exp.to_dict())
                 except Exception as e:
                     err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
+                    if exp_id:
+                        err['exp_id'] = exp_id
                     if title:
                         err['title'] = title
                     res["response"].append(err)
@@ -67,10 +62,9 @@ def get_experiment_by_user():
     incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'user_id' or 'username'."}
     if to_get:
         for g in to_get:
-            username = g['username'] if 'username' in g.keys() else None
-            user_id = g['user_id'] if 'user_id' in g.keys() else None
+            username = from_dict(g, 'username')
+            user_id = from_dict(g, 'user_id')
 
-            # if (id is not None) or (title is not None):
             try:
                 user = User.get(user_id, username)
                 user_id = user.id
@@ -89,8 +83,6 @@ def get_experiment_by_user():
                 if username:
                     err['username'] = username
                 res["response"].append(err)
-            # else:
-            #     res['response'].append(incomplete_description)
     else:
         res['response'].append(incomplete_description)
 
@@ -106,7 +98,7 @@ def upd_experiment():
     if to_update:
         for u in to_update:
             title = from_dict(u, 'title')
-            id = from_dict(u, 'id')
+            exp_id = from_dict(u, 'exp_id')
 
             new_title = from_dict(u, 'new_title')
             short_title = from_dict(u, 'new_short_title')
@@ -121,20 +113,21 @@ def upd_experiment():
 
             # title, short_title, comment, stages_arr, baseline, format_id, format_name, dataset_id, dataset_title
             try:
-                exp = Experiment.get(id, title)
-                exp.update(new_title, short_title, comment, processing_arr, baseline, res_format_id, res_format_name, dataset_id, dataset_title)
+                exp = Experiment.get(exp_id, title)
+                exp.update(new_title, short_title, comment, processing_arr, baseline, res_format_id, res_format_name,
+                           dataset_id, dataset_title)
                 db.session.commit()
                 res.append(exp.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if exp_id:
+                    err['exp_id'] = exp_id
                 if title:
                     err['title'] = title
                 res.append(err)
     #
     else:
-        res.append({"error": "Request must provide list 'to_update' of objects with 'id' or 'title' "
+        res.append({"error": "Request must provide list 'to_update' of objects with 'exp_id' or 'title' "
                              "and data to update ('new_title', 'new_short_title', 'new_comment', 'new_baseline', "
                              "'processing_arr', 'new_format_id', 'new_format_name',"
                              " 'new_dataset_id', 'new_dataset_title')."})
@@ -198,7 +191,7 @@ def del_experiment():
     if to_delete:
         for d in to_delete:
             title = from_dict(d, 'title')
-            id = from_dict(d, 'id')
+            exp_id = from_dict(d, 'exp_id')
 
             try:
                 exp = Experiment.get(id, title)
@@ -210,13 +203,13 @@ def del_experiment():
                 res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if exp_id:
+                    err['exp_id'] = exp_id
                 if title:
                     err['title'] = title
                 res.append(err)
     else:
-        res.append({"error": "Request must provide list 'to_delete' of objects with 'id' or 'title'."})
+        res.append({"error": "Request must provide list 'to_delete' of objects with 'exp_id' or 'title'."})
 
     return jsonify({"deleted": res})
 
@@ -232,12 +225,12 @@ def run():
     if to_run:
         for r in to_run:
             title = from_dict(r, 'title')
-            id = from_dict(r, 'id')
+            exp_id = from_dict(r, 'exp_id')
             delayed = from_dict(r, 'delayed')
             args = from_dict(r, 'args')
 
             try:
-                exp = Experiment.get(id, title)
+                exp = Experiment.get(exp_id, title)
                 # TODO: Test
                 if g.user.exp_admin_rights or (exp.Author == g.user):
 
@@ -254,13 +247,13 @@ def run():
                 res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if exp_id:
+                    err['exp_id'] = exp_id
                 if title:
                     err['title'] = title
                 res.append(err)
     else:
-        res.append({"error": "Request must provide list 'to_run' of objects with 'id' or 'title'. "
+        res.append({"error": "Request must provide list 'to_run' of objects with 'exp_id' or 'title'. "
                              "'delayed' and 'args' are optional. "
                              "The time of delayed task start should be a string in the format: "
                              "'Year-Month-Day Hour:Minute:Second'. "
@@ -277,14 +270,14 @@ def monitoring():
 
     if to_monitor:
         for m in to_monitor:
-            id = from_dict(m, 'id')
+            exe_id = from_dict(m, 'exe_id')
             try:
-                exp_exe = ExpExecution.get(id)
+                exp_exe = ExpExecution.get(exe_id)
                 res.append(exp_exe.to_dict())
             except Exception as e:
                 res.append({"error": str(e)})
     else:
-        res.append({"error": "Request must provide list 'to_monitor' of objects with 'id'."})
+        res.append({"error": "Request must provide list 'to_monitor' of objects with 'exe_id'."})
 
     return jsonify({"started": res})
 
@@ -297,46 +290,14 @@ def cancel():
 
     if to_cancel:
         for c in to_cancel:
-            id = from_dict(c, 'id')
+            exe_id = from_dict(c, 'exe_id')
             try:
-                exp_exe = ExpExecution.get(id)
+                exp_exe = ExpExecution.get(exe_id)
                 exp_exe.cancel()
                 res.append(exp_exe.to_dict())
             except Exception as e:
                 res.append({"error": str(e)})
     else:
-        res.append({"error": "Request must provide list 'to_monitor' of objects with 'id'."})
+        res.append({"error": "Request must provide list 'to_monitor' of objects with 'exe_id'."})
 
     return jsonify({"canceled": res})
-
-
-# @experiment.route('/report_error', methods=["POST"])
-# @auth.login_required
-# def report_error():
-#     res = {}
-#     report = request.json.get('report')
-#
-#     if report:
-#         execution_id = from_dict(report, 'execution_id')
-#         error = from_dict(report, 'error')
-#         try:
-#             exp_exe = ExpExecution.get(execution_id)
-#             exp_exe.set_status(ExecutionStatus.finished)
-#             db.session.commit()
-#
-#             exp = exp_exe.get_experiment()
-#
-#             exp_res = ExpResult()
-#             exp_res.set_experiment(exp)
-#             exp_res.set_result(error)
-#
-#             db.session.add(exp_res)
-#             db.session.commit()
-#
-#             res = exp_res.to_dict()
-#         except Exception as e:
-#             res["error"] = "Unknown error."
-#     else:
-#         res = {"error": "Request must provide 'report' object with 'execution_id', and 'error'."}
-#
-#     return jsonify(res)

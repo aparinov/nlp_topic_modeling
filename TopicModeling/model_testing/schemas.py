@@ -1,6 +1,5 @@
 import fastjsonschema
 from lxml import etree
-from jsonschema import validate
 import ast
 
 

@@ -4,6 +4,7 @@ import unidecode
 import re
 import os
 import json
+import argparse
 
 
 def read_ds_from_file(filename):
@@ -56,9 +57,17 @@ def emails_removal(text):
     return re.sub(urls, ' ', text).replace('\n', ' ').replace('-', ' ')
 
 
-import argparse
-parser = argparse.ArgumentParser(description='Process some integers.')
+parser = argparse.ArgumentParser(conflict_handler='resolve', description='Dataset preprocessing with options. '
+                                                                         'Check the flag to add preprocessing step.')
 
+parser.add_argument('-n','--noise_removal', action='store_true', help="remove noisy characters")
+parser.add_argument('-l','--lower_text', action='store_true', help="convert all text to lowercase")
+parser.add_argument('-u','--urls_removal', action='store_true', help="remove all occurrences of URLs")
+parser.add_argument('-e','--emails_removal', action='store_true', help="remove all occurrences of emails")
+parser.add_argument('-x','--xml_removal', action='store_true', help="remove all occurrences of xml")
+parser.add_argument('-t','--trim_spaces', action='store_true', help="remove whitespace characters duplications")
+
+args = parser.parse_args()
 
 data_path = os.getcwd() + '/model_testing/data'
 
@@ -67,11 +76,18 @@ out_filename = data_path + "/output/data.txt"
 
 dataset = read_ds_from_file(inp_filename)
 
-apply_to_tm_ds(dataset, noise_removal)
-apply_to_tm_ds(dataset, lambda text: text.lower())
-apply_to_tm_ds(dataset, urls_removal)
-apply_to_tm_ds(dataset, emails_removal)
-apply_to_tm_ds(dataset, lambda text: BeautifulSoup(text, "lxml").text)
-apply_to_tm_ds(dataset, lambda text: unidecode.unidecode(re.sub('[\s]+', ' ', text)))
+if args.noise_removal:
+    apply_to_tm_ds(dataset, noise_removal)
+if args.lower_text:
+    apply_to_tm_ds(dataset, lambda text: text.lower())
+if args.urls_removal:
+    apply_to_tm_ds(dataset, urls_removal)
+if args.emails_removal:
+    apply_to_tm_ds(dataset, emails_removal)
+if args.xml_removal:
+    apply_to_tm_ds(dataset, lambda text: BeautifulSoup(text, "lxml").text)
+if args.trim_spaces:
+    apply_to_tm_ds(dataset, lambda text: unidecode.unidecode(re.sub('[\s]+', ' ', text)))
 
 write_ds_to_file(out_filename, dataset)
+

@@ -1,12 +1,8 @@
 from model_testing import db, auth
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from model_testing.database import DataSet, DataFormat
-from model_testing.model.data_format import DataFormat
-from model_testing.model.data_set import DataSet
+from flask import request, jsonify, Blueprint, g
 from model_testing.model.processing import Processing
 from model_testing import from_dict
 
-# from model_testing.workers import add
 
 processing = Blueprint("processing" , __name__)
 
@@ -28,20 +24,20 @@ def get_all_processing():
 def get_processing():
     to_get = request.json.get('to_get')
     res = {"response": []}
-    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'id' or 'name'."}
+    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'processing_id' or 'name'."}
     if to_get:
         for g in to_get:
             name = from_dict(g, 'name')
-            id = from_dict(g, 'id')
+            processing_id = from_dict(g, 'processing_id')
 
-            if (id is not None) or (name is not None):
+            if (processing_id is not None) or (name is not None):
                 try:
-                    proc = Processing.get(id, name)
+                    proc = Processing.get(processing_id, name)
                     res["response"].append(proc.to_dict())
                 except Exception as e:
                     err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
+                    if processing_id:
+                        err['processing_id'] = processing_id
                     if name:
                         err['username'] = name
                     res["response"].append(err)
@@ -62,7 +58,7 @@ def upd_processing():
     if to_update:
         for u in to_update:
             name = from_dict(u, 'name')
-            id = from_dict(u, 'id')
+            processing_id = from_dict(u, 'processing_id')
 
             new_name = from_dict(u, 'new_name')
 
@@ -75,29 +71,31 @@ def upd_processing():
             new_source_uri = from_dict(u, 'new_source_uri')
 
             new_lang_name = from_dict(u, 'new_lang_name')
-            new_args = from_dict(u, 'new_args')
+            # new_args = from_dict(u, 'new_args')
 
             new_env_id = from_dict(u, 'new_env_id')
             new_env_name = from_dict(u, 'new_env_name')
 
+            new_status_name = from_dict(u, 'new_status_name')
+
             try:
-                proc = Processing.get(id, name)
+                proc = Processing.get(processing_id, name)
                 proc.update(new_name, new_input_id, new_input_name, new_output_id, new_output_name,
-                            new_source_uri, new_lang_name, new_env_id, new_env_name, new_args)
+                            new_source_uri, new_lang_name, new_env_id, new_env_name, new_status_name)
                 db.session.commit()
                 res.append(proc.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if processing_id:
+                    err['processing_id'] = processing_id
                 if name:
                     err['name'] = name
                 res.append(err)
     #
     else:
-        res.append({"error": "Request must provide list 'to_update' of objects with 'id' or 'name' "
+        res.append({"error": "Request must provide list 'to_update' of objects with 'processing_id' or 'name' "
                              "and data to update ('new_name', 'new_input_id', 'new_input_name', 'new_output_id',"
-                             " 'new_output_name', 'new_source_uri', 'new_lang_name', 'new_args')."})
+                             " 'new_output_name', 'new_source_uri', 'new_lang_name', 'new_status_name')."})
 
     return jsonify({"updated": res})
 
@@ -109,7 +107,8 @@ def post_processing():
     res = []
     incomplete_description = {"error": "Request must provide list 'to_post' of objects"
                                        " with 'name', 'input_id' ( or 'input_name'), 'output_id'"
-                                       " ( or 'output_name'), 'source_uri', 'lang_name', 'args_info'."}
+                                       " ( or 'output_name'), 'env_id' ( or 'env_name'),"
+                                       " 'source_uri', 'lang_name'."}
     if to_post:
         for p in to_post:
             name = from_dict(p, 'name')
@@ -123,20 +122,23 @@ def post_processing():
             source_uri = from_dict(p, 'source_uri')
 
             lang_name = from_dict(p, 'lang_name')
-            args_info = from_dict(p, 'args_info')
+            # args_info = from_dict(p, 'args_info')
 
             env_id = from_dict(p, 'env_id')
             env_name = from_dict(p, 'env_name')
 
-            full = all([x is not None for x in [name, source_uri, lang_name, args_info]] +
+            status_name = from_dict(p, 'status_name')
+
+            full = all([x is not None for x in [name, source_uri, lang_name, status_name]] +
                        [(input_id is not None) or (input_name is not None),
                         (output_id is not None) or (output_name is not None),
                         (env_id is not None) or (env_name is not None)])
+            from flask import current_app
 
             if full:
                 try:
                     proc = Processing.create(name, input_id, input_name, output_id, output_name,
-                                             source_uri, lang_name, args_info, env_id, env_name, g.user)
+                                             source_uri, lang_name, env_id, env_name, status_name, g.user)
                     db.session.add(proc)
                     db.session.commit()
                     res.append(proc.to_dict())
@@ -161,11 +163,11 @@ def del_processing():
 
     if to_delete:
         for d in to_delete:
-            name = d['name'] if 'name' in d.keys() else None
-            id = d['id'] if 'id' in d.keys() else None
+            name = from_dict(d, 'name')
+            processing_id = from_dict(d, 'processing_id')
 
             try:
-                p = Processing.get(id, name)
+                p = Processing.get(processing_id, name)
                 message = p.to_dict()
 
                 db.session.delete(p)
@@ -174,13 +176,13 @@ def del_processing():
                 res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if processing_id:
+                    err['processing_id'] = processing_id
                 if name:
                     err['name'] = name
                 res.append(err)
     else:
-        res.append({"error": "Request must provide list 'to_delete' of objects with 'id' or 'name'."})
+        res.append({"error": "Request must provide list 'to_delete' of objects with 'processing_id' or 'name'."})
 
     return jsonify({"deleted": res})
 
@@ -188,10 +190,10 @@ def del_processing():
 @processing.route('/run', methods=["POST"])
 @auth.login_required
 def run():
-    id = request.json.get('id')
+    processing_id = request.json.get('processing_id')
     name = request.json.get('name')
 
-    proc = Processing.get(id, name)
+    proc = Processing.get(processing_id, name)
     proc.run()
 
     return jsonify({})

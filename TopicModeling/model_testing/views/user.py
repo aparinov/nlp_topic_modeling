@@ -1,16 +1,8 @@
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from main import User, auth, db
-# import testing_framework as tf
-from flask_sqlalchemy import SQLAlchemy
-from flask_httpauth import HTTPBasicAuth
-import os
+from flask import request, jsonify, Blueprint, g
 from model_testing import from_dict
 from model_testing import db, auth
-# from model_testing.database import User
 from model_testing.model.user import User
 
-from passlib.apps import custom_app_context
-from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 
 user_bp = Blueprint("user", __name__)
 
@@ -28,19 +20,19 @@ def get_all_user():
 def get_user():
     to_get = request.json.get('to_get')
     res = {"response": []}
-    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'id' or 'username'."}
+    incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'user_id' or 'username'."}
     if to_get:
         for g in to_get:
             username = from_dict(g, 'username')
-            id = from_dict(g, 'id')
+            user_id = from_dict(g, 'user_id')
 
             try:
-                us = User.get(id, username)
+                us = User.get(user_id, username)
                 res["response"].append(us.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if user_id:
+                    err['user_id'] = user_id
                 if username:
                     err['username'] = username
                     res["response"].append(err)
@@ -93,14 +85,14 @@ def update_user():
     elif to_update:
         for u in to_update:
             try:
-                id = from_dict(u, 'id')
+                user_id = from_dict(u, 'user_id')
                 username = from_dict(u, 'username')
                 new_username = from_dict(u, 'new_username')
                 new_password = from_dict(u, 'new_password')
                 new_admin_rights = from_dict(u, 'new_admin_rights')
                 new_exp_admin_rights = from_dict(u, 'new_exp_admin_rights')
 
-                user = User.get(id, username)
+                user = User.get(user_id, username)
                 user.update(new_username, new_password, new_admin_rights, new_exp_admin_rights)
 
                 db.session.commit()
@@ -110,8 +102,9 @@ def update_user():
                 res["updated"].append({"error": str(e)})
 
     else:
-        res["updated"].append({"error" : "Request must provide 'to_update' array of objects with 'username',"
-                                         " 'new_password', 'new_admin_rights', 'new_exp_admin_rights' fields."})
+        res["updated"].append({"error" : "Request must provide 'to_update' array of objects with 'username' "
+                                         "(or 'user_id'), 'new_password', 'new_admin_rights',"
+                                         " 'new_exp_admin_rights' fields."})
     return jsonify(res)
 
 
@@ -127,9 +120,9 @@ def delete_user():
         for d in to_delete:
             try:
                 username = from_dict(d, 'username')
-                id = from_dict(d, 'id')
+                user_id = from_dict(d, 'user_id')
 
-                user = User.get(id, username)
+                user = User.get(user_id, username)
                 db.session.delete(user)
                 db.session.commit()
 

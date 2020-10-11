@@ -1,10 +1,8 @@
 from model_testing import db, auth
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from database import session as s
-# from model_testing.database import DataFormat
+from flask import request, jsonify, Blueprint, g
 from model_testing.model.data_format import DataFormat
-from model_testing.model.data_set import DataSet
 from model_testing import from_dict
+
 
 data_format = Blueprint("data_format" , __name__)
 
@@ -14,7 +12,6 @@ data_format = Blueprint("data_format" , __name__)
 def get_all_dataformat():
     res = {"response": []}
     dfs = db.session.query(DataFormat).all()
-    # from model_testing.database import DataFormats
     for df in dfs:
         res["response"].append(df.to_dict())
     return jsonify(res)
@@ -59,16 +56,16 @@ def upd_dataformat():
     if to_update:
         for u in to_update:
             name = from_dict(u, 'name')
-            id = from_dict(u, 'id')
+            dataformat_id = from_dict(u, 'dataformat_id')
             new_name = from_dict(u, 'new_name')
             new_format = from_dict(u, 'new_file_format')
             new_schema_uri = from_dict(u, 'new_schema_uri')
             try:
-                df = DataFormat.get(id, name)
+                df = DataFormat.get(dataformat_id, name)
 
                 df.update(new_name, new_format, new_schema_uri)
 
-                id = df.Id
+                dataformat_id = df.Id
                 name = df.name
 
                 db.session.commit()
@@ -76,14 +73,14 @@ def upd_dataformat():
 
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if dataformat_id:
+                    err['dataformat_id'] = dataformat_id
                 if name:
                     err['name'] = name
                 res.append(err)
 
     else:
-        res.append({"error": "Request must provide list 'to_update' of objects with 'id' or 'name' "
+        res.append({"error": "Request must provide list 'to_update' of objects with 'dataformat_id' or 'name' "
                              "and data to update ('new_name','new_file_format','new_schema_uri')."})
 
     return jsonify({"updated": res})
@@ -128,12 +125,12 @@ def del_dataformat():
     if to_delete:
         for d in to_delete:
             name = from_dict(d, 'name')
-            id = from_dict(d, 'id')
+            dataformat_id = from_dict(d, 'dataformat_id')
 
             try:
-                df = DataFormat.get(id, name)
+                df = DataFormat.get(dataformat_id, name)
 
-                id = df.Id
+                dataformat_id = df.Id
                 name = df.name
 
                 db.session.delete(df)
@@ -141,13 +138,13 @@ def del_dataformat():
                 res.append(df.to_dict())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if dataformat_id:
+                    err['dataformat_id'] = dataformat_id
                 if name:
                     err['name'] = name
                 res.append(err)
 
     else:
-        res.append({"error": "Request must provide list 'to_delete' of objects with 'id' or 'name'."})
+        res.append({"error": "Request must provide list 'to_delete' of objects with 'dataformat_id' or 'name'."})
 
     return jsonify({"deleted": res})

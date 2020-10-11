@@ -1,8 +1,8 @@
-from transformers import RobertaTokenizer, TFRobertaModel
+from transformers import RobertaTokenizer
 import tensorflow as tf
 import os
 import json
-
+import argparse
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if len(gpus) != 0:
@@ -57,6 +57,9 @@ def tokenized2strings(inputs):
         res.append(i + "/" + a)
     return res
 
+
+parser = argparse.ArgumentParser(conflict_handler='resolve', description='Text tokenization. No options.')
+args = parser.parse_args()
 
 data_path = os.getcwd() + '/model_testing/data'
 

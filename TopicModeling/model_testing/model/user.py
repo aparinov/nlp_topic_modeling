@@ -1,27 +1,14 @@
-from model_testing import db, auth
+from model_testing import db
 
 from passlib.apps import custom_app_context
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 from flask import current_app
 
-import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Enum
-from sqlalchemy import BIGINT, NVARCHAR, TIMESTAMP, ForeignKey, FLOAT, BLOB, LargeBinary
-from sqlalchemy.orm import sessionmaker
-
-import datetime
-# from schemas import tm_dataset_schema, tm_dataset_xsd
-from urllib.parse import urlparse
-import urllib.request
-from schemas import validate_json, validate_xml
 
 class User(db.Model):
     __tablename__ = 'users'
 
-    id = db.Column("Id" ,db.Integer, primary_key = True, autoincrement=True)
+    id = db.Column("id" ,db.Integer, primary_key = True, autoincrement=True)
     username = db.Column(db.String(32), index = True)
     password_hash = db.Column(db.String(128))
     admin_rights = db.Column(db.Boolean, default=False)
@@ -29,7 +16,7 @@ class User(db.Model):
 
     def generate_auth_token(self, expiration = 600):
         s = Serializer(current_app.config['SECRET_KEY'], expires_in = expiration)
-        return s.dumps({ 'id': self.id })
+        return s.dumps({ 'user_id': self.id })
 
     @staticmethod
     def create(username, password, admin_rights, exp_admin_rights):
@@ -49,19 +36,19 @@ class User(db.Model):
             return None # valid token, but expired
         except BadSignature:
             return None # invalid token
-        user = User.query.get(data['id'])
+        user = User.query.get(data['user_id'])
         return user
 
     @staticmethod
-    def get(id, username):
-        err = "The request must provide 'id' or 'username' of the sole Data Format record."
+    def get(user_id, username):
+        err = "The request must provide 'user_id' or 'username' of the sole Data Format record."
         us = []
 
         if username:
             us.append(db.session.query(User).filter(User.username == username).first())
-
-        if id:
-            us.append(db.session.query(User).filter(User.id == id).first())
+        if user_id:
+            us.append(db.session.query(User).filter(User.id == user_id).first())
+        us = list(filter(lambda x: x is not None, us))
 
         if len(us) == 0:
             raise Exception("No such User.")
@@ -72,7 +59,7 @@ class User(db.Model):
                 raise Exception(err)
         else:
             if us[0] == us[1]:
-                return us[1]
+                return us[0]
             else:
                 raise Exception(err)
 
@@ -129,7 +116,7 @@ class User(db.Model):
 
     def to_dict(self):
         return {
-           "id" : self.id,
+           "user_id" : self.id,
            "username": self.username,
            "admin_rights": self.admin_rights,
            "exp_admin_rights": self.exp_admin_rights

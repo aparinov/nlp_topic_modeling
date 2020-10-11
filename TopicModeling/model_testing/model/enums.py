@@ -1,5 +1,6 @@
 import enum
 
+
 class DataFormats(enum.Enum):
     json = 'json'
     xml = 'xml'
@@ -7,17 +8,11 @@ class DataFormats(enum.Enum):
     binary = 'binary'
     db = 'database'
 
+
 class OSs(enum.Enum):
     win = 'Win'
     linux = 'Linux'
     mac = 'MacOS'
-
-
-class ImplStatus(enum.Enum):
-    deprecated = 'Deprecated'
-    incorrect = 'Incorrect'
-    correct = 'Correct'
-    has_new = 'HasNewVersion'
 
 
 class Langs(enum.Enum):
@@ -28,3 +23,13 @@ class Langs(enum.Enum):
 class ExecutionStatus(enum.Enum):
     started = 'started'
     finished = 'finished'
+    canceled = 'canceled'
+    failure = 'failure'
+
+
+class ProgramStatus(enum.Enum):
+    outdated = 'outdated'
+    invalid = 'invalid'
+    valid = 'valid'
+    new_available = 'new_available'
+

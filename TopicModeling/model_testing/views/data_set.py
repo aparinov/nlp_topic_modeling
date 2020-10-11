@@ -1,9 +1,8 @@
 from model_testing import db, auth
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from model_testing.database import DataSet, DataFormat
-from model_testing.model.data_format import DataFormat
+from flask import request, jsonify, Blueprint, g
 from model_testing.model.data_set import DataSet
 from model_testing import from_dict
+
 
 data_set = Blueprint("data_set" , __name__)
 
@@ -28,8 +27,8 @@ def get_dataset():
     incomplete_description = {"error":"Request must provide list 'to_get' of objects with 'id' or 'name'."}
     if to_get:
         for g in to_get:
-            name = g['name'] if 'name' in g.keys() else None
-            id = g['id'] if 'id' in g.keys() else None
+            name = from_dict(g, 'name')
+            id = from_dict(g, 'id')
 
             if (id is not None) or (name is not None):
                 try:
@@ -59,7 +58,7 @@ def upd_dataset():
     if to_update:
         for u in to_update:
             title = from_dict(u, 'title')
-            id = from_dict(u, 'id')
+            dataset_id = from_dict(u, 'dataset_id')
 
             new_title = from_dict(u, 'new_title')
             new_format_name = from_dict(u, 'new_format_name')
@@ -67,26 +66,24 @@ def upd_dataset():
             new_uri = from_dict(u, 'new_uri')
 
             try:
-                ds = DataSet.get(id, title)
+                ds = DataSet.get(dataset_id, title)
                 ds.update(new_title, new_uri, new_format_id, new_format_name)
 
-                id = ds.Id
+                dataset_id = ds.Id
                 title = ds.Title
-                # format = df.format
-                # schema = df.schema
 
                 db.session.commit()
-                res.append({"id": id, "title": title})#, "format": format, "schema":schema})
+                res.append(ds.to_dict_light())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if dataset_id:
+                    err['dataset_id'] = dataset_id
                 if title:
                     err['title'] = title
                 res.append(err)
 
     else:
-        res.append({"error": "Request must provide list 'to_update' of objects with 'id' or 'title' "
+        res.append({"error": "Request must provide list 'to_update' of objects with 'dataset_id' or 'title' "
                              "and data to update ('new_title', 'new_format_name', 'new_format_id', 'new_uri')."})
 
     return jsonify({"updated": res})
@@ -109,8 +106,7 @@ def post_dataset():
                 ds = DataSet.create(title, uri, format_id, format_name, g.user)
                 db.session.add(ds)
                 db.session.commit()
-                id = ds.Id
-                title = ds.Title
+
                 res.append(ds.to_dict_light())
             except Exception as e:
                 err = {"error": str(e)}
@@ -132,26 +128,26 @@ def del_dataset():
 
     if to_delete:
         for d in to_delete:
-            title = d['title'] if 'title' in d.keys() else None
-            id = d['id'] if 'id' in d.keys() else None
+            title = from_dict(d, 'title')
+            dataset_id = from_dict(d, 'dataset_id')
 
             try:
-                ds = DataSet.get(id, title)
+                ds = DataSet.get(dataset_id, title)
 
-                id = ds.Id
+                dataset_id = ds.Id
                 title = ds.Title
 
                 db.session.delete(ds)
                 db.session.commit()
-                res.append({"id": id, "title": title})
+                res.append(ds.to_dict_light())
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if dataset_id:
+                    err['dataset_id'] = dataset_id
                 if title:
                     err['title'] = title
                 res.append(err)
     else:
-        res.append({"error": "Request must provide list 'to_delete' of objects with 'id' or 'title'."})
+        res.append({"error": "Request must provide list 'to_delete' of objects with 'dataset_id' or 'title'."})
 
     return jsonify({"deleted": res})

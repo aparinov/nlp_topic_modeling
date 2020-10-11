@@ -1,75 +1,60 @@
-from model_testing import db, auth
+from model_testing import db
 
-from passlib.apps import custom_app_context
-from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-from flask import current_app
-
-import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Enum
-from sqlalchemy import BIGINT, NVARCHAR, TIMESTAMP, ForeignKey, FLOAT, BLOB, LargeBinary
-from sqlalchemy.orm import sessionmaker
-
-import datetime
-# from schemas import tm_dataset_schema, tm_dataset_xsd
-from urllib.parse import urlparse
-import urllib.request
-from schemas import validate_json, validate_xml
-from model_testing.model.base_entity import BaseEntity
-from model_testing.model.data_format import DataFormat
-from model_testing.model.enums import Langs
-from base64 import b64decode, b64encode
-from model_testing.workers import run, verify_input, verify_output, transfer_output_to_input, clean, prepare_input
-
-
+import platform
 import psutil
 import subprocess
 import sys
 import tensorflow as tf
+
+from sqlalchemy import Column, Integer, String
+from sqlalchemy import BIGINT, NVARCHAR, TIMESTAMP, ForeignKey, FLOAT, BLOB, LargeBinary
+from model_testing.model.base_entity import BaseEntity
 
 
 class Environment(BaseEntity):
     # TODO: test
     __tablename__ = 'environment'
 
-    EnvironmentId = Column("Id", Integer, ForeignKey('base_entity.Id'), primary_key=True)
+    environment_id = Column("id", Integer, ForeignKey('base_entity.id'), primary_key=True)
     name = Column(String(None), default="")
     py_dependencies = Column(String(None), default="")
     cuda_version = Column(String(None), default="")
+    architecture = Column(String(None), default="")
     gpu_required = Column(db.Boolean, default=False)
 
     @staticmethod
-    def get(id, name):
-        p = []
+    def get(env_id, name):
+        env = []
         if name:
-            p.append(db.session.query(Environment).filter(Environment.name == name).first())
-        elif id:
-            p.append(db.session.query(Environment).filter(Environment.Id == id).first())
+            env.append(db.session.query(Environment).filter(Environment.name == name).first())
+        if env_id:
+            env.append(db.session.query(Environment).filter(Environment.id == env_id).first())
 
-        if len(p) == 0:
+        env = list(filter(lambda x: x is not None, env))
+
+        if len(env) == 0:
             raise Exception("No such Environment.")
-        elif len(p) == 1:
-            return p[0]
+        elif len(env) == 1:
+            return env[0]
         else:
-            if (p[0] == p[1]):
-                return p[1]
+            if env[0] == env[1]:
+                return env[0]
             else:
-                raise Exception("The request must provide 'id' or 'name' of the sole Environment record.")
+                raise Exception("The request must provide 'env_id' or 'name' of the sole Environment record.")
 
     @staticmethod
-    def create(name, cuda_version, gpu_required, py_dependencies, author):
+    def create(name, cuda_version, gpu_required, py_dependencies, architecture, author):
         env = Environment()
         env.set_name(name)
         env.set_cuda_version(cuda_version)
         env.set_gpu_required(gpu_required)
         env.set_py_dependencies(py_dependencies)
         env.set_author(author)
+        env.set_architecture(architecture)
         return env
 
     def set_name(self, name):
-        if not name:
+        if name is None:
             raise Exception("Name not provided.")
         if type(name) is not str:
             raise Exception("Name must be string.")
@@ -78,15 +63,22 @@ class Environment(BaseEntity):
             raise Exception("Name must be unique.")
         self.name = name
 
+    def set_architecture(self, architecture):
+        if architecture is None:
+            raise Exception("'architecture' not provided.")
+        if type(architecture) is not str:
+            raise Exception("'architecture' must be string.")
+        self.architecture = architecture
+
     def set_cuda_version(self, cuda_version):
-        if not cuda_version:
+        if cuda_version is None:
             raise Exception("'cuda_version' not provided.")
         if type(cuda_version) is not str:
             raise Exception("'cuda_version' must be string.")
         self.cuda_version = cuda_version
 
     def set_py_dependencies(self, py_dependencies):
-        if not py_dependencies:
+        if py_dependencies is None:
             raise Exception("'py_dependencies' not provided.")
         if type(py_dependencies) is not str:
             raise Exception("'py_dependencies' must be string.")
@@ -99,7 +91,7 @@ class Environment(BaseEntity):
             raise Exception("'gpu_required' flag must be boolean.")
         self.gpu_required = gpu_required
 
-    def update(self, name, cuda_version, gpu_required, py_dependencies):
+    def update(self, name, cuda_version, gpu_required, py_dependencies, architecture):
         if (self.name != name) and name:
             self.set_name(name)
         if cuda_version is not None:
@@ -108,22 +100,20 @@ class Environment(BaseEntity):
             self.set_gpu_required(gpu_required)
         if py_dependencies is not None:
             self.set_py_dependencies(py_dependencies)
+        if architecture is not None:
+            self.set_architecture(architecture)
 
     def to_dict(self):
-        author = self.get_author()
-        return {
-            "id": self.Id,
-            "name": self.name,
-            "cuda_version": self.cuda_version,
-            "gpu_required": self.gpu_required,
-            "py_dependencies": self.py_dependencies,
-            "author_username" : author.username,
-            "author_id" : author.id
-        }
+        d = super().to_dict()
+        d["env_id"] = self.id
+        d["name"] = self.name
+        d["cuda_version"] = self.cuda_version
+        d["gpu_required"] = self.gpu_required
+        d["py_dependencies"] = self.py_dependencies
+        d["architecture"] = self.architecture
+        return d
 
     __mapper_args__ = {'polymorphic_identity': 'environment'}
-
-
 
 
 def get_free_ram():
@@ -167,3 +157,7 @@ def get_packages():
 
 def get_gpus():
     return tf.config.experimental.list_physical_devices('GPU')
+
+
+def get_architecture():
+    return platform.processor()

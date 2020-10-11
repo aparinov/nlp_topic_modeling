@@ -1,16 +1,12 @@
 from model_testing import db, auth
-from flask import Flask, request, abort, jsonify, url_for, Blueprint, g
-# from model_testing.database import DataSet, DataFormat
-from model_testing.model.data_format import DataFormat
-from model_testing.model.data_set import DataSet
-from model_testing.model.processing import Processing
-from model_testing.model.experiment import Experiment
+from flask import request, jsonify, Blueprint
 from model_testing import from_dict
 from model_testing.model.exp_result import ExpResult
 from model_testing.model.exp_execution import ExpExecution
 from model_testing.model.experiment import Experiment
 from model_testing.model.enums import ExecutionStatus
 from model_testing.model.user import User
+
 
 result = Blueprint("result", __name__)
 
@@ -34,19 +30,19 @@ def get_result():
 
     res = {"response": []}
 
-    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'id'."}
+    incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'res_id'."}
     if to_get:
         for g in to_get:
-            id = g['id'] if 'id' in g.keys() else None
+            res_id = from_dict(g, 'res_id')
 
-            if id is not None:
+            if res_id is not None:
                 try:
-                    exp_res = ExpResult.get(id)
+                    exp_res = ExpResult.get(res_id)
                     res["response"].append(exp_res.to_dict())
                 except Exception as e:
                     err = {"error": str(e)}
-                    if id:
-                        err['id'] = id
+                    if res_id:
+                        err['res_id'] = res_id
                     res["response"].append(err)
             else:
                 res['response'].append(incomplete_description)
@@ -65,8 +61,8 @@ def get_result_by_user():
     incomplete_description = {"error": "Request must provide list 'to_get' of objects with 'user_id' or 'username'."}
     if to_get:
         for g in to_get:
-            username = g['username'] if 'username' in g.keys() else None
-            user_id = g['user_id'] if 'user_id' in g.keys() else None
+            username = from_dict(g, 'username')
+            user_id = from_dict(g, 'user_id')
 
             # if (id is not None) or (title is not None):
             try:
@@ -104,14 +100,14 @@ def post_result():
 
     if to_post:
         for p in to_post:
-            exe_id = from_dict(p, 'execution_id')
+            exe_id = from_dict(p, 'exe_id')
             result = from_dict(p, 'result')
 
             try:
                 exp_exe = ExpExecution.get(exe_id)
                 exp_exe.set_status(ExecutionStatus.finished)
 
-                exp = exp_exe.get_experiment() #Experiment.get(exp_id, None)
+                exp = exp_exe.get_experiment()
 
                 exp_res = ExpResult()
                 exp_res.set_experiment(exp)
@@ -136,10 +132,10 @@ def del_result():
 
     if to_delete:
         for d in to_delete:
-            id = from_dict(d, 'id')
+            res_id = from_dict(d, 'res_id')
 
             try:
-                exp_res = ExpResult.get(id)
+                exp_res = ExpResult.get(res_id)
                 message = exp_res.to_dict_light()
                 #
                 db.session.delete(exp_res)
@@ -148,10 +144,10 @@ def del_result():
                 res.append(message)
             except Exception as e:
                 err = {"error": str(e)}
-                if id:
-                    err['id'] = id
+                if res_id:
+                    err['res_id'] = res_id
                 res.append(err)
     else:
-        res.append({"error": "Request must provide list 'to_delete' of objects with 'id'."})
+        res.append({"error": "Request must provide list 'to_delete' of objects with 'res_id'."})
 
     return jsonify({"deleted": res})
