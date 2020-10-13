@@ -30,7 +30,6 @@ class DataFormat(BaseEntity):
 
     @staticmethod
     def get(dataformat_id, name):
-        # TODO: Test
         err = "The request must provide 'dataformat_id' or 'name' of the sole Data Format record."
         df = []
         if name:

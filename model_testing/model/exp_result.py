@@ -6,7 +6,6 @@ from model_testing import db
 
 
 class ExpResult(BaseEntity):
-    # TODO: test
     __tablename__ = 'results'
 
     result_id = Column('id', Integer, ForeignKey('base_entity.id'), primary_key=True)
@@ -40,7 +39,6 @@ class ExpResult(BaseEntity):
     def set_execution(self, execution):
         self.execution = execution.id
 
-    # TODO : utf-8 для всех пользовательских данных (требования)
     def set_result(self, result):
         self.result = result.encode('utf-8')
 

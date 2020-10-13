@@ -14,7 +14,6 @@ from model_testing.config import ADMIN_NAME, ADMIN_PASS
 
 
 class Experiment(BaseEntity):
-    # TODO: test
     __tablename__ = 'experiment'
 
     experiment_id = Column('id', Integer, ForeignKey('base_entity.id'), primary_key=True)
@@ -225,15 +224,18 @@ class Experiment(BaseEntity):
         schema = res_f.schema
         format_name = res_f.format.value
 
-        # chain_items = [prev_sign] if prev_sign else []
-        chain_items = [await_previous.si(prev_id)] + ds.get_chain_items(exe_id)
+        from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer)
+        s = Serializer(current_app.config['SECRET_KEY'])
+        tokenized_exe_id = s.dumps({ 'exe_id': exe_id }).decode('ascii')
+
+        chain_items = [await_previous.si(prev_id)] + ds.get_chain_items(tokenized_exe_id)
 
         for i in range(len(procs)):
             proc = procs[i]
             arg = args[i]
-            chain_items = chain_items + proc.get_chain_items(exe_id, arg)
-        chain_items = chain_items + [verify_input.si(exe_id, schema, format_name),
-                                     finalize_exp.si(exe_id, ADMIN_NAME, ADMIN_PASS)]
+            chain_items = chain_items + proc.get_chain_items(tokenized_exe_id, arg)
+        chain_items = chain_items + [verify_input.si(tokenized_exe_id, schema, format_name),
+                                     finalize_exp.si(tokenized_exe_id)]
 
         ch = chain(chain_items).apply_async(eta=launch_time, add_to_parent=True)#, acks_late = True, queue='A')
 

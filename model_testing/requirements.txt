@@ -16,7 +16,6 @@ passlib==1.7.4
 packaging==20.4
 protobuf==3.12.4
 pyparsing==2.4.7
-psycopg2==2.8.6
 pytz==2020.1
 redis==3.5.3
 regex==2020.7.14

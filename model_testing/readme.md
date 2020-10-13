@@ -21,7 +21,7 @@ Activate virtual environment.
 ```
 Install requirements.
 ```sh
-pip install -r requirements.txt --no-cache-dir
+sudo pip install -r requirements.txt --no-cache-dir
 ```
 
 
@@ -37,8 +37,8 @@ docker run -d --hostname celery-rabbit --name celery-rabbit -e RABBITMQ_DEFAULT_
 
 Run celery worker and beat (for delayed tasks) in separate terminals.
 ```sh
-celery -A run:celery worker --loglevel=INFO
-celery -A run:celery beat --loglevel=INFO
+python -m celery -A run:celery worker --loglevel=INFO
+python -m celery -A run:celery beat --loglevel=INFO
 ```
 
 Run app itself.

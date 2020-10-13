@@ -1,8 +1,13 @@
+import argparse
+
+parser = argparse.ArgumentParser(conflict_handler='resolve', description='Text tokenization. No options.')
+args = parser.parse_args()
+
+
 from transformers import RobertaTokenizer
 import tensorflow as tf
 import os
 import json
-import argparse
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if len(gpus) != 0:
@@ -58,17 +63,8 @@ def tokenized2strings(inputs):
     return res
 
 
-parser = argparse.ArgumentParser(conflict_handler='resolve', description='Text tokenization. No options.')
-args = parser.parse_args()
-
-data_path = os.path.join(os.getcwd(), 'model_testing', 'data')
-
-inp_filename = os.path.join(data_path + "input", "data.txt")
-out_filename = os.path.join(data_path + "output", "data.txt")
-# data_path = os.getcwd() + '/model_testing/data'
-#
-# inp_filename = data_path + "/input/data.txt"
-# out_filename = data_path + "/output/data.txt"
+inp_filename = os.path.join(os.getcwd(), 'data', "input", "data.txt")
+out_filename = os.path.join(os.getcwd(), 'data', "output", "data.txt")
 
 each = 1
 

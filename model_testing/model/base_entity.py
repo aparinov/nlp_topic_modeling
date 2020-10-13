@@ -54,10 +54,7 @@ class BaseEntity(db.Model):
             dependent = dependent + (d if d else [])
         elif entity.discriminator == "processing":
             # Experiment
-            # TODO: Test this trick. Check if ilike pattern don't pick processings with substrings in index.
             d = db.session.query(Experiment).filter(
-                # lambda exp: entity.id in exp.processing_ids.split(' ')
-                # entity.id in Experiment.processing_ids.split(' ')
                 Experiment.processing_ids.ilike("%-{0}-%".format(entity.id))
             ).all()
             dependent = dependent + (d if d else [])

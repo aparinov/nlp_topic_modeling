@@ -12,7 +12,6 @@ from model_testing.model.base_entity import BaseEntity
 
 
 class Environment(BaseEntity):
-    # TODO: test
     __tablename__ = 'environment'
 
     environment_id = Column("id", Integer, ForeignKey('base_entity.id'), primary_key=True)

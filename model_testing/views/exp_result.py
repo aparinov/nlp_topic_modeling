@@ -6,7 +6,8 @@ from model_testing.model.exp_execution import ExpExecution
 from model_testing.model.experiment import Experiment
 from model_testing.model.enums import ExecutionStatus
 from model_testing.model.user import User
-
+from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer)
+from flask import current_app
 
 result = Blueprint("result", __name__)
 
@@ -92,7 +93,6 @@ def get_result_by_user():
 
 
 @result.route('/post', methods=["POST"])
-@auth.login_required()
 def post_result():
     to_post = request.json.get('to_post')
     res = []
@@ -100,12 +100,18 @@ def post_result():
 
     if to_post:
         for p in to_post:
-            exe_id = from_dict(p, 'exe_id')
+            s = Serializer(current_app.config['SECRET_KEY'])
+
+            tokenized_exe_id = from_dict(p, 'tokenized_exe_id')
             result = from_dict(p, 'result')
+            status = from_dict(p, 'status')
+            exe_id = s.loads(tokenized_exe_id)['exe_id']
 
             try:
                 exp_exe = ExpExecution.get(exe_id)
-                exp_exe.set_status(ExecutionStatus.finished)
+                exp_exe.set_status(ExecutionStatus[status])
+                if status == ExecutionStatus.finished.value:
+                    exp_exe.cancel()
 
                 exp = exp_exe.get_experiment()
 

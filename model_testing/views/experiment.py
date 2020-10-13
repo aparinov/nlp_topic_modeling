@@ -230,7 +230,6 @@ def run():
 
             try:
                 exp = Experiment.get(exp_id, title)
-                # TODO: Test
                 if g.user.exp_admin_rights or (exp.Author == g.user):
 
                     if args and (type(args) is list):

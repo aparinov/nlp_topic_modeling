@@ -16,7 +16,6 @@ from model_testing.model.environment import Environment
 
 
 class Processing(BaseEntity):
-    # TODO: test
     __tablename__ = 'processing'
 
     processing_id = Column('id', Integer, ForeignKey('base_entity.id'), primary_key=True)

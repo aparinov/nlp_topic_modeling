@@ -1,7 +1,12 @@
+import argparse
+
+parser = argparse.ArgumentParser(conflict_handler='resolve', description='Evaluation of clustering for given embedding.'
+                                                                         ' No options.')
+args = parser.parse_args()
+
 from sklearn.cluster import KMeans
 
 import numpy as np
-import argparse
 
 from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
@@ -48,19 +53,8 @@ def strings2embedded(strings):
     return tf.stack(embedded, axis=0, name='stack')
 
 
-parser = argparse.ArgumentParser(conflict_handler='resolve', description='Evaluation of clustering for given embedding.'
-                                                                         ' No options.')
-args = parser.parse_args()
-
-# data_path = os.getcwd() + '/model_testing/data'
-#
-# inp_filename = data_path + "/input/data.txt"
-# out_filename = data_path + "/output/data.txt"
-
-data_path = os.path.join(os.getcwd(), 'model_testing', 'data')
-
-inp_filename = os.path.join(data_path + "input", "data.txt")
-out_filename = os.path.join(data_path + "output", "data.txt")
+inp_filename = os.path.join(os.getcwd(), 'data', "input", "data.txt")
+out_filename = os.path.join(os.getcwd(), 'data', "output", "data.txt")
 
 dataset = read_ds_from_file(inp_filename)
 

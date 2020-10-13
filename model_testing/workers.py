@@ -11,45 +11,40 @@ from requests import post
 from model_testing.config import ADMIN_NAME, ADMIN_PASS
 
 
-def report_failure(exe_id, e):
+def report_failure(tokenized_exe_id, e):
     url = "http://127.0.0.1:5000/result/post"
-    auth = HTTPBasicAuth(ADMIN_NAME, ADMIN_PASS)
 
-    data = {"to_post": [{"exe_id" : exe_id,
+    data = {"to_post": [{"tokenized_exe_id" : tokenized_exe_id,
                         "result" : str(e),
                         "status" : ExecutionStatus.failure.value}]}
-    post(url, auth=auth, json=data)
-
+    post(url, json=data)
     raise e
 
 
 @celery_app.task(name="finalize_experiment")
-def finalize_exp(exe_id, username, password):
-    # TODO: send results to API, creating result record
-    #  and setting status of experiment execution to 'SUCCESS'
+def finalize_exp(tokenized_exe_id):
     try:
         url = "http://127.0.0.1:5000/result/post"
-        auth = HTTPBasicAuth(username, password)
-        path = os.getcwd() + '/model_testing/data/input/data.txt'
+        path =  os.path.join(os.getcwd(), 'data', 'input', 'data.txt')
         with open(path) as f:
             result = f.read()
         data = {"to_post":[{"result": result,
-                            "exe_id": exe_id,
-                            "status" : ExecutionStatus.finished.value}]}
-        post(url, auth=auth, json=data)
+                            "status" : ExecutionStatus.finished.value,
+                            "tokenized_exe_id": tokenized_exe_id}]}
+        post(url, json=data)
         if os.path.isfile(path):
             os.remove(path)
         return None
     except Exception as e:
-        report_failure(exe_id, e)
+        report_failure(tokenized_exe_id, e)
 
 
 @celery_app.task(name="clean_working_directories")
 def clean(exe_id):
-    # TODO: Test
     try:
-        data_folder = os.getcwd() + '/model_testing/data/'
-        for path in [data_folder + "stage", data_folder + "input", data_folder + "output"]:
+        for path in [os.path.join(os.getcwd(), 'data','stage'),
+                     os.path.join(os.getcwd(), 'data','input'),
+                     os.path.join(os.getcwd(), 'data','output')]:
             for file in os.listdir(path):
                 file_path = os.path.join(path, file)
                 try:
@@ -63,9 +58,8 @@ def clean(exe_id):
 
 @celery_app.task(name="prepare_input")
 def prepare_input(exe_id, data):
-    # TODO: Test
     try:
-        path = os.getcwd() + '/model_testing/data/input/data.txt'
+        path = os.path.join(os.getcwd(), 'data', 'input', 'data.txt')
 
         with open(path, 'w') as f:
             f.write(data)
@@ -74,7 +68,6 @@ def prepare_input(exe_id, data):
 
 
 def validate(schema, instance, format_name, file_type="Input"):
-    # TODO: Test
     format = DataFormats[format_name]
     validation = None
     if format == DataFormats.json:
@@ -87,9 +80,8 @@ def validate(schema, instance, format_name, file_type="Input"):
 
 @celery_app.task(name="verify_input")
 def verify_input(exe_id, schema, format_name):
-    # TODO: Test
     try:
-        path = os.getcwd() + '/model_testing/data/input/data.txt'
+        path = os.path.join(os.getcwd(), 'data', 'input', 'data.txt')
         with open(path) as f:
             instance = f.read()
         validate(schema, instance, format_name, file_type="Input")
@@ -101,25 +93,22 @@ def verify_input(exe_id, schema, format_name):
 
 @celery_app.task(name="verify_output")
 def verify_output(exe_id, schema, format_name):
-    # TODO: Test
     try:
-        path = os.getcwd() + '/model_testing/data/output/data.txt'
+        path = os.path.join(os.getcwd(), 'data', 'output', 'data.txt')
         with open(path) as f:
             instance = f.read()
         validate(schema, instance, format_name, file_type="Output")
     except Exception as e:
         report_failure(exe_id, e)
     except FileNotFoundError:
-        report_failure(exe_id, "Given processing stage didn't save result to 'data/output/data.txt'.")
+        report_failure(exe_id, "Given processing stage didn't save result to '{0}'.".format(path))
 
 
 @celery_app.task(name="finalize_stage")
-def transfer_output_to_input(exe_id, ):
-    # TODO: Test
+def transfer_output_to_input(exe_id):
     try:
-        path = os.getcwd() + '/model_testing/data/'
-        inp = path + "input/data.txt"
-        out = path + "output/data.txt"
+        inp = os.path.join(os.getcwd(), 'data', 'input', 'data.txt')
+        out = os.path.join(os.getcwd(), 'data', 'output', 'data.txt')
 
         if os.path.isfile(out):
             os.replace(out, inp)
@@ -147,7 +136,7 @@ def await_previous(self, prev_id):
 def run(exe_id, code="", lang_name="python", py_dependencies=None, args=""):
     try:
         source = b64decode(code)
-        base_path = os.getcwd() + '/model_testing/data/stage/'
+        base_path = os.path.join(os.getcwd(), 'data', 'stage', '')
 
         args_ar = args.split(' ')
 
@@ -174,8 +163,8 @@ def run(exe_id, code="", lang_name="python", py_dependencies=None, args=""):
             sys.argv = argv
 
         elif lang_name == "exe":
-            path_to_exe = os.getcwd() + '/model_testing/data/stage/program.exe'
-            path_to_data = os.getcwd() + '/model_testing/data/'
+            path_to_exe = os.path.join(os.getcwd(), 'data', 'stage', 'program.exe')
+            path_to_data = os.path.join(os.getcwd(), 'data', '')
 
             if os.path.isfile(path_to_exe):
                 os.remove(path_to_exe)

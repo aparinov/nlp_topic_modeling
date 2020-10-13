@@ -33,7 +33,6 @@ class DataSet(BaseEntity):
 
     @staticmethod
     def get(dataset_id, title):
-        # TODO: test
         ds = []
         if title:
             ds.append(db.session.query(DataSet).filter(DataSet.title == title).first())
