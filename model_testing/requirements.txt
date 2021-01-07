@@ -33,6 +33,6 @@ tokenizers==0.7.0
 tqdm==4.48.2
 transformers==3.0.2
 urllib3==1.25.10
-lxml==4.5.2
+lxml==4.6.2
 psutil==5.7.2
 celery==4.4.7
